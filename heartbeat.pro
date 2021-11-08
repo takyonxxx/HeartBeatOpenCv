@@ -115,8 +115,7 @@ android {
         ANDROID_EXTRA_LIBS = $$PWD/OpenCV-android-sdk/sdk/native/libs/arm64-v8a/libopencv_java4.so       
     }
 
-    RESOURCES += \
-        resources.qrc
+    RESOURCES +=
 
     DISTFILES += \
         android/AndroidManifest.xml \
@@ -131,4 +130,8 @@ android {
     ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 
 }
+#sudo apt install libopencv-dev python3-opencv
 #<uses-sdk android:minSdkVersion="21" android:targetSdkVersion="29"/>
+
+RESOURCES += \
+    resources.qrc

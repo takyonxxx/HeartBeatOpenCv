@@ -36,6 +36,7 @@ public:
         QString filename = fileName.remove(":/opencv/");
         QFile temp(filename);
 
+
         if(temp.exists())
             return;
 
