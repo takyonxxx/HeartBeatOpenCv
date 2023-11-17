@@ -1,8 +1,5 @@
 #include "frames.h"
 
-#include <QCameraDevice>
-#include <QThreadPool>
-#include <QTimer>
 
 Frames::Frames( QObject * parent )
     :	QVideoSink( parent )
@@ -14,23 +11,6 @@ Frames::Frames( QObject * parent )
 Frames::~Frames()
 {
     stopCam();
-}
-
-QVideoSink *
-Frames::videoSink() const
-{
-    return m_videoSink.get();
-}
-
-void
-Frames::setVideoSink( QVideoSink * newVideoSink )
-{
-    if( m_videoSink == newVideoSink )
-        return;
-
-    m_videoSink = newVideoSink;
-
-    emit videoSinkChanged(m_videoSink);
 }
 
 void
@@ -45,15 +25,11 @@ Frames::newFrame( const QVideoFrame & frame )
         f.unmap();
         emit frameCaptured(f);
     }
-
-    if( m_videoSink )
-        m_videoSink->setVideoFrame( frame );
 }
 
 void
 Frames::initCam()
 {
-//    m_cam = new QCamera( this );
     auto cameraDevice = new QCamera(QMediaDevices::defaultVideoInput());
 
     m_cam.reset(cameraDevice);
@@ -75,8 +51,8 @@ Frames::initCam()
             m_cam->setFocusMode( QCamera::FocusModeAuto );
             m_cam->setCameraFormat(bestFormat);
             auto m_formatString = QString( "%1x%2 at %3 fps, %4" ).arg( QString::number( bestFormat.resolution().width() ),
-                                                                QString::number( bestFormat.resolution().height() ), QString::number( (int) bestFormat.maxFrameRate() ),
-                                                                        QVideoFrameFormat::pixelFormatToString( bestFormat.pixelFormat() ));
+                                                                     QString::number( bestFormat.resolution().height() ), QString::number( (int) bestFormat.maxFrameRate() ),
+                                                                     QVideoFrameFormat::pixelFormatToString( bestFormat.pixelFormat() ));
             emit sendInfo(m_formatString);
         }
     }

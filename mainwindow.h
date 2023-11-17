@@ -60,8 +60,6 @@ public:
 #endif
 
 private:
-//    CaptureThread* cpThread{};
-    int count{0};
     QGraphicsPixmapItem pixmap;
     QMediaCaptureSession m_captureSession;
     QScopedPointer<QCamera> m_camera;

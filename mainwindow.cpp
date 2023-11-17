@@ -71,17 +71,8 @@ void MainWindow::processFrame(QVideoFrame &frame)
 
             int time;
             time = (cv::getTickCount()*1000.0)/cv::getTickFrequency();
-
-            if (count % DEFAULT_DOWNSAMPLE == 0)
-            {
-                bpm = rppg->processFrame(frameRGB, frameGray, time);
-                printInfo(QString::number(bpm, 'f', 1));
-            }
-            else
-            {
-                cout << "SKIPPING FRAME TO DOWNSAMPLE!" << endl;
-            }
-            count++;
+            bpm = rppg->processFrame(frameRGB, frameGray, time);
+            printInfo(QString::number(bpm, 'f', 1));
         }
 
         QImage img_face((uchar*)frameRGB.data, frameRGB.cols, frameRGB.rows, frameRGB.step, QImage::Format_RGB888);
