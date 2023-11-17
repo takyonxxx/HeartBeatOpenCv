@@ -4,11 +4,20 @@
 #include <QMainWindow>
 #include <QScreen>
 #include <QFile>
-#include "capturethread.h"
+#include <QGraphicsPixmapItem>
+#include <QMediaDevices>
+#include "frames.h"
+//#include "capturethread.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
+
+#include "RPPG.hpp"
+
+using namespace cv;
+
+Q_DECLARE_METATYPE(cv::Mat);
 
 class MainWindow : public QMainWindow
 {
@@ -42,7 +51,7 @@ public:
 
         if (temp.open(QIODevice::ReadWrite)) {
             QTextStream stream(&temp);
-            stream << data << endl;
+            stream << data ;
         }
     }
 
@@ -51,13 +60,20 @@ public:
 #endif
 
 private:
-    CaptureThread* cpThread{};
+//    CaptureThread* cpThread{};
+    int count{0};
     QGraphicsPixmapItem pixmap;
+    QMediaCaptureSession m_captureSession;
+    QScopedPointer<QCamera> m_camera;
+    Frames *m_frames;   
+    RPPG *rppg{};
 
-private slots:    
-    void processFrame(Mat&, double, bool);
+private slots:
+    void processFrame(QVideoFrame&);
+    void processImage(QImage&);
     void printInfo(QString);
-    void orientationChanged(Qt::ScreenOrientation orientation);
+
+    void on_pushExit_clicked();
 
 private:
     Ui::MainWindow *ui;

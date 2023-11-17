@@ -1,5 +1,6 @@
 QT += core gui
 QT += multimedia
+QT += multimediawidgets
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -11,18 +12,16 @@ CONFIG += c++11
 
 SOURCES += \
     RPPG.cpp \
-    capturethread.cpp \
+    frames.cpp \
     main.cpp \
     mainwindow.cpp \
-    opencv.cpp \
-    qtcameracapture.cpp
+    opencv.cpp
 
 HEADERS += \
     RPPG.hpp \
-    capturethread.h \
+    frames.h \
     mainwindow.h \
-    opencv.hpp \
-    qtcameracapture.h
+    opencv.hpp
 
 FORMS += \
     mainwindow.ui
@@ -45,8 +44,15 @@ unix:!macx:!ios:!android{
 
 macx{
     message("macx enabled")
-    INCLUDEPATH += /usr/local/opt/opencv/include/opencv4
-    LIBS += -L/usr/local/opt/opencv/lib -lopencv_core -lopencv_dnn -lopencv_highgui -lopencv_imgcodecs -lopencv_imgproc -lopencv_objdetect -lopencv_video -lopencv_videoio
+
+    INCLUDEPATH += /opt/homebrew/Cellar/opencv/4.8.1_3/include/opencv4
+    LIBS += -L/opt/homebrew/Cellar/opencv/4.8.1_3/lib -lopencv_core -lopencv_dnn -lopencv_highgui -lopencv_imgcodecs -lopencv_imgproc -lopencv_objdetect -lopencv_video -lopencv_videoio
+    QMAKE_INFO_PLIST = ./macos/Info.plist
+#    QMAKE_ASSET_CATALOGS = $$PWD/macos/Assets.xcassets
+#    QMAKE_ASSET_CATALOGS_APP_ICON = "AppIcon"
+
+#    INCLUDEPATH += /usr/local/opt/opencv/include/opencv4
+#    LIBS += -L/usr/local/opt/opencv/lib -lopencv_core -lopencv_dnn -lopencv_highgui -lopencv_imgcodecs -lopencv_imgproc -lopencv_objdetect -lopencv_video -lopencv_videoio
 }
 
 win32{
@@ -57,7 +63,7 @@ win32{
 
 ios {
     message("ios enabled")
-    QMAKE_INFO_PLIST = ios/Info.plist
+    QMAKE_INFO_PLIST = ./ios/Info.plist
     INCLUDEPATH += /Users/turkaybiliyor/opencvios/ios/opencv2.framework/Headers
     LIBS += \
              -F /Users/turkaybiliyor/opencvios/ios \
@@ -131,7 +137,7 @@ android {
 
 }
 #sudo apt install libopencv-dev python3-opencv
-#<uses-sdk android:minSdkVersion="21" android:targetSdkVersion="29"/>
+#brew install opencv
 
 RESOURCES += \
     resources.qrc

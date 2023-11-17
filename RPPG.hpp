@@ -11,7 +11,6 @@
 #include <algorithm>
 #include <QDebug>
 #include <QCamera>
-#include <QCameraInfo>
 #include <opencv2/opencv.hpp>
 
 #define DEFAULT_RPPG_ALGORITHM "g"

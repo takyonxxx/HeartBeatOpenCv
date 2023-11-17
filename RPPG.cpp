@@ -150,7 +150,7 @@ double RPPG::processFrame(Mat &frameRGB, Mat &frameGray, int time) {
     }
 
     if (faceValid)
-    {        
+    {
         // Update fps
         fps = getFps(t, timeBase);
 
@@ -212,7 +212,7 @@ double RPPG::processFrame(Mat &frameRGB, Mat &frameGray, int time) {
 
 void RPPG::detectFace(Mat &frameRGB, Mat &frameGray) {
 
-    //cout << "Scanning for faces…" << endl;
+//    cout << "Scanning for faces…" << faceDetAlg << " " << endl;
     vector<Rect> boxes = {};
 
     switch (faceDetAlg) {

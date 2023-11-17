@@ -6,12 +6,13 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    ui->textInfo->setStyleSheet("font-size: 36pt; color:#ECF0F1; background-color: #212F3C; padding: 6px; spacing: 6px;");
+    ui->textInfo->setStyleSheet("font-size: 24pt; color:#ECF0F1; background-color: #212F3C; padding: 6px; spacing: 6px;");
     ui->graphicsView->setStyleSheet("font-size: 24pt; color:#ECF0F1; background-color: #212F3C; padding: 6px; spacing: 6px;");
+    ui->pushExit->setStyleSheet("font-size: 24pt; font: bold; color: #ffffff; background-color: #336699;");
 
     //QString currentTime = QDateTime::currentDateTime().toString("yyyyMMddhhmmss");
     ui->graphicsView->setScene(new QGraphicsScene(this));
-    setGeometry(0,0,1024,600);
+    setGeometry(0,0,1024,1024);
     ui->graphicsView->scene()->addItem(&pixmap);
 
     QString fileName = ":/opencv/deploy.prototxt";
@@ -21,52 +22,87 @@ MainWindow::MainWindow(QWidget *parent)
     fileName = ":/opencv/res10_300x300_ssd_iter_140000.caffemodel";
     createFile(fileName);
 
-    QScreen *s = QGuiApplication::primaryScreen();
-    connect(s, SIGNAL(orientationChanged(Qt::ScreenOrientation)),
-            this, SLOT(orientationChanged(Qt::ScreenOrientation)));
+    rppg = new RPPG();
+    connect(rppg, &RPPG::sendInfo, this, &MainWindow::printInfo);
+    rppg->load(0, HAAR_CLASSIFIER_PATH, DNN_PROTO_PATH, DNN_MODEL_PATH);
 
-    s->setOrientationUpdateMask(
-                Qt::PortraitOrientation
-                | Qt::LandscapeOrientation
-                | Qt::InvertedPortraitOrientation
-                | Qt::InvertedLandscapeOrientation);
-
-    cpThread = new CaptureThread();
-    connect(cpThread, &CaptureThread::frameCaptured, this, &MainWindow::processFrame);
-    connect(cpThread, &CaptureThread::sendInfo, this, &MainWindow::printInfo);
-    connect(cpThread, &CaptureThread::finished, cpThread, &QObject::deleteLater);
-    connect(cpThread, &CaptureThread::finished, [&](){ cpThread = nullptr; });
-    cpThread->start();
+    m_frames = new Frames();
+    connect(m_frames, &Frames::sendInfo, this, &MainWindow::printInfo);
+    connect(m_frames, &Frames::frameCaptured, this, &MainWindow::processFrame);
+    m_frames->initCam();
 }
 
 MainWindow::~MainWindow()
 {
-    cpThread->abort();
-    cpThread->quit();
-    cpThread->wait(1000);
+    if(m_frames)
+        delete m_frames;
+
+    if(rppg)
+        delete rppg;
+
     delete ui;
 }
 
-void MainWindow::orientationChanged(Qt::ScreenOrientation orientation)
+void MainWindow::processFrame(QVideoFrame &frame)
 {
-    cpThread->setPause(true);
-    cpThread->setOrientation(orientation);
-    cpThread->setPause(false);
+    if (frame.isValid())
+    {
+        QVideoFrame cloneFrame(frame);
+        cloneFrame.map(QVideoFrame::ReadOnly);
+
+        QImage img = cloneFrame.toImage();
+        cloneFrame.unmap();
+
+        img = img.convertToFormat(QImage::Format_RGB888);
+        Mat frameRGB(img.height(),
+                     img.width(),
+                     CV_8UC3,
+                     img.bits(),
+                     img.bytesPerLine());
+
+        if(!frameRGB.empty())
+        {
+            Mat frameGray;
+            double bpm = 0.0;
+
+            // Generate grayframe
+            cvtColor((InputArray)frameRGB, (OutputArray)frameGray, COLOR_BGR2GRAY);
+            equalizeHist((InputArray)frameGray, (OutputArray)frameGray);
+
+            int time;
+            time = (cv::getTickCount()*1000.0)/cv::getTickFrequency();
+
+            if (count % DEFAULT_DOWNSAMPLE == 0)
+            {
+                bpm = rppg->processFrame(frameRGB, frameGray, time);
+                printInfo(QString::number(bpm, 'f', 1));
+            }
+            else
+            {
+                cout << "SKIPPING FRAME TO DOWNSAMPLE!" << endl;
+            }
+            count++;
+        }
+
+        QImage img_face((uchar*)frameRGB.data, frameRGB.cols, frameRGB.rows, frameRGB.step, QImage::Format_RGB888);
+        pixmap.setPixmap( QPixmap::fromImage(img_face));
+        ui->graphicsView->fitInView(&pixmap, Qt::KeepAspectRatioByExpanding);
+    }
 }
 
-void MainWindow::processFrame(Mat &frameRGB, double bpm, bool swap)
-{
-    QImage img_face((uchar*)frameRGB.data, frameRGB.cols, frameRGB.rows, frameRGB.step, QImage::Format_RGB888);
-    if(swap)
-        img_face = img_face.rgbSwapped();
-
+void MainWindow::processImage(QImage &img_face)
+{    
     pixmap.setPixmap( QPixmap::fromImage(img_face));
     ui->graphicsView->fitInView(&pixmap, Qt::KeepAspectRatio);
-    printInfo(QString::number(bpm, 'f', 1));
 }
 
 void MainWindow::printInfo(QString info)
 {
     ui->textInfo->setText(info);
+}
+
+void MainWindow::on_pushExit_clicked()
+{
+    qApp->exit();
 }
 
