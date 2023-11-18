@@ -6,9 +6,15 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    ui->textInfo->setStyleSheet("font-size: 36pt; font: bold; color:#ECF0F1; background-color: #212F3C; padding: 6px; spacing: 6px;");
+#if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
+    ui->textBpm->setStyleSheet("font-size: 12pt; font: bold; color:#ECF0F1; background-color: #212F3C; padding: 6px; spacing: 6px;");
+ui->m_textStatus->setStyleSheet("font-size: 12pt; color: #cccccc; background-color: #003333;");
+#else
+    ui->textBpm->setStyleSheet("font-size: 36pt; font: bold; color:#ECF0F1; background-color: #212F3C; padding: 6px; spacing: 6px;");
+    ui->m_textStatus->setStyleSheet("font-size: 36pt; color: #cccccc; background-color: #003333;");
+#endif
     ui->graphicsView->setStyleSheet("font-size: 24pt; color:#ECF0F1; background-color: #212F3C; padding: 6px; spacing: 6px;");
-    ui->pushExit->setStyleSheet("font-size: 24pt; font: bold; color: #ffffff; background-color: #336699;");
+    ui->pushExit->setStyleSheet("font-size: 24pt; font: bold; color: #ffffff; background-color: #336699;");    
 
     //QString currentTime = QDateTime::currentDateTime().toString("yyyyMMddhhmmss");
     ui->graphicsView->setScene(new QGraphicsScene(this));
@@ -63,6 +69,7 @@ void MainWindow::processFrame(QVideoFrame &frame)
 
         if(!frameRGB.empty())
         {
+
             Mat frameGray;
             double bpm = 0.0;
 
@@ -72,18 +79,19 @@ void MainWindow::processFrame(QVideoFrame &frame)
 
             int time;
             time = (cv::getTickCount()*1000.0)/cv::getTickFrequency();
+            #if !defined(Q_OS_IOS) && !defined(Q_OS_ANDROID)
             bpm = rppg->processFrame(frameRGB, frameGray, time);
             if(bpm < MAX_BPM)
             {
                 std::stringstream ss;
                 ss << std::fixed << std::setprecision(1) << bpm;
-                printInfo(ss.str().c_str());
+                printBpm(ss.str().c_str());
             }
+            #endif
+            QImage img_face((uchar*)frameRGB.data, frameRGB.cols, frameRGB.rows, frameRGB.step, QImage::Format_RGB888);
+            pixmap.setPixmap( QPixmap::fromImage(img_face));
+            ui->graphicsView->fitInView(&pixmap, Qt::KeepAspectRatioByExpanding);
         }
-
-        QImage img_face((uchar*)frameRGB.data, frameRGB.cols, frameRGB.rows, frameRGB.step, QImage::Format_RGB888);
-        pixmap.setPixmap( QPixmap::fromImage(img_face));
-        ui->graphicsView->fitInView(&pixmap, Qt::KeepAspectRatioByExpanding);
     }
 }
 
@@ -94,8 +102,13 @@ void MainWindow::processImage(QImage &img_face)
 }
 
 void MainWindow::printInfo(QString info)
-{   
-    ui->textInfo->setText(info);
+{
+    ui->m_textStatus->append(info);
+}
+
+void MainWindow::printBpm(QString bpm)
+{
+    ui->textBpm->setText(bpm);
 }
 
 void MainWindow::on_pushExit_clicked()

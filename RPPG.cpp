@@ -49,6 +49,35 @@ bool RPPG::load(int camIndex, const string &haarPath, const string &dnnProtoPath
     int downsample;
     downsample = DEFAULT_DOWNSAMPLE;
 
+#if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
+    QString haarClassifierPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/haarcascade_frontalface_alt.xml";
+    std::ifstream test1(haarClassifierPath.toStdString().c_str());
+    if (!test1.is_open()) {
+        std::cout << "Face classifier xml not found!" << std::endl;
+        info = "Face classifier xml not found!";
+        emit sendInfo(info);
+        return false;
+    }
+
+
+    QString _dnnProtoPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/deploy.prototxt";
+    std::ifstream test2(_dnnProtoPath.toStdString().c_str());
+    if (!test2.is_open()) {
+        std::cout << "DNN proto file not found!" << std::endl;
+        info = "DNN proto file not found!";
+        emit sendInfo(info);
+        return false;
+    }
+
+    QString _dnnModelPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/res10_300x300_ssd_iter_140000.caffemodel";
+    std::ifstream test3(_dnnModelPath.toStdString().c_str());
+    if (!test3.is_open()) {
+        std::cout << "DNN model file not found!" << std::endl;
+        info = "DNN model file not found!";
+        emit sendInfo(info);
+        return false;
+    }
+#else
     std::ifstream test1(HAAR_CLASSIFIER_PATH);
     if (!test1) {
         std::cout << "Face classifier xml not found!" << std::endl;
@@ -72,6 +101,7 @@ bool RPPG::load(int camIndex, const string &haarPath, const string &dnnProtoPath
         emit sendInfo(info);
         return false;
     }
+#endif
 
     bool offlineMode = false;
     int width = 0;

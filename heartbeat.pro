@@ -63,11 +63,9 @@ win32{
 
 ios {
     message("ios enabled")
-    QMAKE_INFO_PLIST = ./ios/Info.plist
-    INCLUDEPATH += /Users/turkaybiliyor/opencvios/ios/opencv2.framework/Headers
-    LIBS += \
-             -F /Users/turkaybiliyor/opencvios/ios \
-             -framework opencv2
+    QMAKE_INFO_PLIST = ./ios/Info.plist   
+    INCLUDEPATH += /Users/turkaybiliyor/opencv2.framework/include
+#    LIBS += -F /Users/turkaybiliyor/opencv2.framework -framework opencv2
 }
 
 android {

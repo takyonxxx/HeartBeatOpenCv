@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QScreen>
 #include <QFile>
+#include <QStandardPaths>
 #include <QGraphicsPixmapItem>
 #include <QMediaDevices>
 #include "frames.h"
@@ -32,32 +33,34 @@ public:
         QString data;
 
         QFile file(fileName);
-        if(!file.open(QIODevice::ReadOnly)) {
-           return;
-        }
-        else
-        {
+        if (!file.open(QIODevice::ReadOnly)) {
+            return;
+        } else {
             data = file.readAll();
         }
 
         file.close();
 
         QString filename = fileName.remove(":/opencv/");
-        QFile temp(filename);
+        QString tempFilePath;
 
+#if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
+        QString iosWritablePath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+        tempFilePath = iosWritablePath + "/" + filename;
+#else
+        tempFilePath = filename;
+#endif
 
-        if(temp.exists())
+        QFile temp(tempFilePath);
+
+        if (temp.exists())
             return;
 
         if (temp.open(QIODevice::ReadWrite)) {
             QTextStream stream(&temp);
-            stream << data ;
+            stream << data;
         }
     }
-
-#ifdef Q_OS_ANDROID
-
-#endif
 
 private:
     QGraphicsPixmapItem pixmap;
@@ -70,6 +73,7 @@ private slots:
     void processFrame(QVideoFrame&);
     void processImage(QImage&);
     void printInfo(QString);
+    void printBpm(QString);
 
     void on_pushExit_clicked();
 
