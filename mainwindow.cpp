@@ -70,6 +70,7 @@ void MainWindow::processFrame(QVideoFrame &frame)
         if(!frameRGB.empty())
         {
 
+            #if !defined(Q_OS_IOS) && !defined(Q_OS_ANDROID)
             Mat frameGray;
             double bpm = 0.0;
 
@@ -79,7 +80,7 @@ void MainWindow::processFrame(QVideoFrame &frame)
 
             int time;
             time = (cv::getTickCount()*1000.0)/cv::getTickFrequency();
-            #if !defined(Q_OS_IOS) && !defined(Q_OS_ANDROID)
+
             bpm = rppg->processFrame(frameRGB, frameGray, time);
             if(bpm < MAX_BPM)
             {
@@ -88,6 +89,7 @@ void MainWindow::processFrame(QVideoFrame &frame)
                 printBpm(ss.str().c_str());
             }
             #endif
+
             QImage img_face((uchar*)frameRGB.data, frameRGB.cols, frameRGB.rows, frameRGB.step, QImage::Format_RGB888);
             pixmap.setPixmap( QPixmap::fromImage(img_face));
             ui->graphicsView->fitInView(&pixmap, Qt::KeepAspectRatioByExpanding);
