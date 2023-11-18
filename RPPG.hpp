@@ -20,6 +20,7 @@
 #define DEFAULT_MIN_SIGNAL_SIZE 5
 #define DEFAULT_MAX_SIGNAL_SIZE 5
 #define DEFAULT_DOWNSAMPLE 1 // x means only every xth frame is used
+#define MAX_BPM 500
 
 #define HAAR_CLASSIFIER_PATH "haarcascade_frontalface_alt.xml"
 #define DNN_PROTO_PATH "deploy.prototxt"

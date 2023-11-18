@@ -6,13 +6,14 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    ui->textInfo->setStyleSheet("font-size: 24pt; color:#ECF0F1; background-color: #212F3C; padding: 6px; spacing: 6px;");
+    ui->textInfo->setStyleSheet("font-size: 36pt; font: bold; color:#ECF0F1; background-color: #212F3C; padding: 6px; spacing: 6px;");
     ui->graphicsView->setStyleSheet("font-size: 24pt; color:#ECF0F1; background-color: #212F3C; padding: 6px; spacing: 6px;");
     ui->pushExit->setStyleSheet("font-size: 24pt; font: bold; color: #ffffff; background-color: #336699;");
 
     //QString currentTime = QDateTime::currentDateTime().toString("yyyyMMddhhmmss");
     ui->graphicsView->setScene(new QGraphicsScene(this));
     setGeometry(0,0,1024,1024);
+    setMaximumSize(QSize(1024, 1024));
     ui->graphicsView->scene()->addItem(&pixmap);
 
     QString fileName = ":/opencv/deploy.prototxt";
@@ -72,7 +73,12 @@ void MainWindow::processFrame(QVideoFrame &frame)
             int time;
             time = (cv::getTickCount()*1000.0)/cv::getTickFrequency();
             bpm = rppg->processFrame(frameRGB, frameGray, time);
-            printInfo(QString::number(bpm, 'f', 1));
+            if(bpm < MAX_BPM)
+            {
+                std::stringstream ss;
+                ss << std::fixed << std::setprecision(1) << bpm;
+                printInfo(ss.str().c_str());
+            }
         }
 
         QImage img_face((uchar*)frameRGB.data, frameRGB.cols, frameRGB.rows, frameRGB.step, QImage::Format_RGB888);
@@ -88,7 +94,7 @@ void MainWindow::processImage(QImage &img_face)
 }
 
 void MainWindow::printInfo(QString info)
-{
+{   
     ui->textInfo->setText(info);
 }
 
