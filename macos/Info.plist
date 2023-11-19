@@ -15,7 +15,7 @@
     <key>LSMinimumSystemVersion</key>
     <string>${MACOSX_DEPLOYMENT_TARGET}</string>
     <key>NSCameraUsageDescription</key>
-    <string>Your description for camera usage</string>
+    <string>We need access to your camera to capture photos and videos for a better user experience.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>photo library usage</string>
     <key>NSFileUsageDescription</key>

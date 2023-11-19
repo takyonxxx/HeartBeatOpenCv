@@ -55,23 +55,19 @@ Frames::initCam()
         auto formats = cameraDevice->cameraDevice().videoFormats();
         if (!formats.isEmpty()) {
             QCameraFormat bestFormat;
+            int minDistance = std::numeric_limits<int>::max(); // Initialize to a large value
+
             for (const auto &fmt : formats) {
-                if (fmt.pixelFormat() == QVideoFrameFormat::Format_NV12)
-                {
-                    #if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
-                    if (fmt.resolution().width()== 640 &&  fmt.resolution().height() == 480)
-                    {
+                if (fmt.pixelFormat() == QVideoFrameFormat::Format_NV12) {
+                    int distance = calculateDistance(1280, 720, fmt.resolution().width(), fmt.resolution().height());
+
+                    if (distance < minDistance) {
+                        minDistance = distance;
                         bestFormat = fmt;
                     }
-                    #else
-                    if(fmt.resolution().width() > fmt.resolution().height()
-                        && bestFormat.resolution().width() < fmt.resolution().width()
-                        && bestFormat.resolution().height() < fmt.resolution().height()) {
-                        bestFormat = fmt;
-                    }
-                    #endif
                 }
             }
+
             m_cam->setCameraFormat(bestFormat);
         }
     }
@@ -79,7 +75,7 @@ Frames::initCam()
     m_cam->setFocusMode( QCamera::FocusModeAuto );
 
     auto camFormat = m_cam->cameraFormat();
-    auto m_formatString = QString( "%1x%2 at %3 fps, %4" ).arg( QString::number( camFormat.resolution().width() ),
+    auto m_formatString = QString( "%1x%2 at %3 fps, format %4" ).arg( QString::number( camFormat.resolution().width() ),
                                                              QString::number( camFormat.resolution().height() ), QString::number( (int) camFormat.maxFrameRate() ),
                                                              QVideoFrameFormat::pixelFormatToString( camFormat.pixelFormat() ));
     emit sendInfo(m_formatString);

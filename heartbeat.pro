@@ -7,6 +7,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 CONFIG += c++17
 
 TEMPLATE = app
+TARGET = heartbeat
 
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -28,13 +29,16 @@ HEADERS += \
 FORMS += \
     mainwindow.ui
 
-# Default rules for deployment.
-qnx: target.path = /tmp/$${TARGET}/bin
-else: unix:!android: target.path = /opt/$${TARGET}/bin
-!isEmpty(target.path): INSTALLS += target
 
 win32{
     message("Win32 enabled")
+
+
+    # Default rules for deployment.
+    qnx: target.path = /tmp/$${TARGET}/bin
+    else: unix:!android: target.path = /opt/$${TARGET}/bin
+    !isEmpty(target.path): INSTALLS += target
+
     RC_ICONS += $$\PWD\icons\robot.png
     LIBS += -L$$(OPENCV_DIR)/lib -lopencv_world452
     INCLUDEPATH += C:/opencv/build/include
@@ -42,6 +46,11 @@ win32{
 
 unix:!macx:!ios:!android{
     message("linux enabled")
+
+    # Default rules for deployment.
+    qnx: target.path = /tmp/$${TARGET}/bin
+    else: unix:!android: target.path = /opt/$${TARGET}/bin
+    !isEmpty(target.path): INSTALLS += target
 
     INCLUDEPATH += /usr/lib
     INCLUDEPATH += /usr/local/lib
@@ -52,10 +61,11 @@ unix:!macx:!ios:!android{
 }
 
 macos{
-    message("macx enabled")
+    message("macx enabled")    
     QMAKE_INFO_PLIST = ./macos/Info.plist
     QMAKE_ASSET_CATALOGS = $$PWD/macos/Assets.xcassets
     QMAKE_ASSET_CATALOGS_APP_ICON = "AppIcon"
+
     INCLUDEPATH += /opt/homebrew/Cellar/opencv/4.8.1_3/include/opencv4
     LIBS += -L/opt/homebrew/Cellar/opencv/4.8.1_3/lib -lopencv_core -lopencv_dnn -lopencv_highgui -lopencv_imgcodecs -lopencv_imgproc -lopencv_objdetect -lopencv_video -lopencv_videoio
  }

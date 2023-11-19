@@ -1,5 +1,6 @@
 #include "RPPG.hpp"
 #include "opencv.hpp"
+#include <future>
 
 using namespace cv;
 using namespace dnn;
@@ -50,7 +51,7 @@ bool RPPG::load(int camIndex, const string &haarPath, const string &dnnProtoPath
     downsample = DEFAULT_DOWNSAMPLE;
 
 #if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
-    QString haarClassifierPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/haarcascade_frontalface_alt.xml";
+    QString haarClassifierPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/haarcascade_frontalface_alt.xml";
     std::ifstream test1(haarClassifierPath.toStdString().c_str());
     if (!test1.is_open()) {
         std::cout << "Face classifier xml not found!" << std::endl;
@@ -59,8 +60,16 @@ bool RPPG::load(int camIndex, const string &haarPath, const string &dnnProtoPath
         return false;
     }
 
+//    cv::CascadeClassifier faceCascade;
+//    if (!faceCascade.load(haarClassifierPath.toStdString())) {
+//        std::cerr << "Error: Could not load face cascade classifier." << std::endl;
+//        std::cerr << "Error description: " << cv::Exception(cv::Error::StsError, "Error opening file", __func__, __FILE__, __LINE__).what() << std::endl;
+//        emit sendInfo(info);
+//        return false;
+//    }
 
-    QString _dnnProtoPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/deploy.prototxt";
+
+    QString _dnnProtoPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/deploy.prototxt";
     std::ifstream test2(_dnnProtoPath.toStdString().c_str());
     if (!test2.is_open()) {
         std::cout << "DNN proto file not found!" << std::endl;
@@ -69,14 +78,14 @@ bool RPPG::load(int camIndex, const string &haarPath, const string &dnnProtoPath
         return false;
     }
 
-    QString _dnnModelPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/res10_300x300_ssd_iter_140000.caffemodel";
+    QString _dnnModelPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/res10_300x300_ssd_iter_140000.caffemodel";
     std::ifstream test3(_dnnModelPath.toStdString().c_str());
     if (!test3.is_open()) {
         std::cout << "DNN model file not found!" << std::endl;
         info = "DNN model file not found!";
         emit sendInfo(info);
         return false;
-    }
+    }    
 #else
     std::ifstream test1(HAAR_CLASSIFIER_PATH);
     if (!test1) {
@@ -103,30 +112,40 @@ bool RPPG::load(int camIndex, const string &haarPath, const string &dnnProtoPath
     }
 #endif
 
+    info = "All opencv files stored.";
+    emit sendInfo(info);
+
     bool offlineMode = false;
     int width = 0;
     int height = 0;
     double timeBase = 0.0;
+    VideoCapture localCap;
 
-    VideoCapture cap;
-    cap.open(camIndex);
+    std::future<void> asyncInitialization = std::async(std::launch::async, [&]() {
+        try {
+            localCap.open(camIndex);
+        } catch (cv::Exception& e) {
+            std::cerr << "OpenCV Exception: " << e.what() << std::endl;
+            std::cerr << "Could not open camera with index: " << camIndex << std::endl;
+        }
 
-    if (!cap.isOpened())
-    {
-        width = 480;
-        height = 800;
-        timeBase = 0.001;
-    }
-    else
-    {
-        // Load video information       
-        width = (!cap.isOpened()) ? 480 : cap.get(cv::CAP_PROP_FRAME_WIDTH);
-        height = (!cap.isOpened()) ? 800 : cap.get(cv::CAP_PROP_FRAME_HEIGHT);
-        timeBase = 0.001;
+        if (!localCap.isOpened()) {
+            width = 480;
+            height = 800;
+            timeBase = 0.001;
+        } else {
+            // Load video information
+            width = localCap.get(cv::CAP_PROP_FRAME_WIDTH);
+            height = localCap.get(cv::CAP_PROP_FRAME_HEIGHT);
+            timeBase = 0.001;
 
-        if(cap.isOpened())
-            cap.release();
-    }
+            if (localCap.isOpened())
+                localCap.release();
+        }
+    });
+
+    // Wait for the camera initialization to finish
+    asyncInitialization.wait();
 
     std::string title = offlineMode ? "rPPG offline" : "rPPG online";
 
@@ -150,7 +169,7 @@ bool RPPG::load(int camIndex, const string &haarPath, const string &dnnProtoPath
     case deep:
         dnnClassifier = readNetFromCaffe(dnnProtoPath, dnnModelPath);
         break;
-    }       
+    }
 
     return true;
 }
@@ -248,7 +267,12 @@ void RPPG::detectFace(Mat &frameRGB, Mat &frameGray) {
     switch (faceDetAlg) {
     case haar:
         // Detect faces with Haar classifier
-        haarClassifier.detectMultiScale(frameGray, boxes, 1.1, 2, CASCADE_SCALE_IMAGE, minFaceSize);
+        if (!frameGray.empty()) {
+            haarClassifier.detectMultiScale(frameGray, boxes, 1.1, 2, CASCADE_SCALE_IMAGE, minFaceSize);
+        } else {
+            // Handle the case when frameGray is empty
+            cerr << "Error: Input grayscale frame is empty." << endl;
+        }
         break;
     case deep:
         // Detect faces with DNN

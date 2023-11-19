@@ -19,8 +19,13 @@ signals:
     void sendInfo(QString);
 
 public:
-    static void registerQmlType();
+    // Function to calculate the Euclidean distance between two resolutions
+    int calculateDistance(int targetWidth, int targetHeight, int width, int height) {
+        return std::sqrt((targetWidth - width) * (targetWidth - width) +
+                         (targetHeight - height) * (targetHeight - height));
+    }
 
+    static void registerQmlType();
     explicit Frames( QObject * parent = nullptr );
     ~Frames() override;
 
