@@ -30,7 +30,7 @@ FORMS += \
     mainwindow.ui
 
 
-win32{
+win32 {
     message("Win32 enabled")
 
 
@@ -44,7 +44,7 @@ win32{
     INCLUDEPATH += C:/opencv/build/include
 }
 
-unix:!macx:!ios:!android{
+unix:!macx:!ios:!android {
     message("linux enabled")
 
     # Default rules for deployment.
@@ -60,7 +60,7 @@ unix:!macx:!ios:!android{
     LIBS += -lopencv_core -lopencv_dnn -lopencv_highgui -lopencv_imgcodecs -lopencv_imgproc -lopencv_objdetect -lopencv_video -lopencv_videoio
 }
 
-macos{
+macos {
     message("macx enabled")    
     QMAKE_INFO_PLIST = ./macos/Info.plist
     QMAKE_ASSET_CATALOGS = $$PWD/macos/Assets.xcassets
