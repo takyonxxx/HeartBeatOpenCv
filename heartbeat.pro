@@ -39,7 +39,7 @@ win32 {
     else: unix:!android: target.path = /opt/$${TARGET}/bin
     !isEmpty(target.path): INSTALLS += target
 
-    RC_ICONS += $$\PWD\icons\robot.png
+    RC_ICONS += $$\PWD\icons\heart-rate.png
     LIBS += -L$$(OPENCV_DIR)/lib -lopencv_world452
     INCLUDEPATH += C:/opencv/build/include
 }
