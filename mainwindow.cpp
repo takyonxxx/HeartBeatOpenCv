@@ -6,6 +6,7 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
 #if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
     ui->textBpm->setStyleSheet("font-size: 12pt; font: bold; color:#ECF0F1; background-color: #212F3C; padding: 6px; spacing: 6px;");
     ui->m_textStatus->setStyleSheet("font-size: 12pt; color: #cccccc; background-color: #003333;");
