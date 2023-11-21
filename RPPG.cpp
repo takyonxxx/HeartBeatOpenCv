@@ -10,8 +10,8 @@ using namespace std;
 #define HIGH_BPM 240
 #define REL_MIN_FACE_SIZE 0.4
 #define SEC_PER_MIN 60
-#define MAX_CORNERS 10
-#define MIN_CORNERS 5
+#define MAX_CORNERS 25
+#define MIN_CORNERS 1
 #define QUALITY_LEVEL 0.01
 #define MIN_DISTANCE 25
 
@@ -49,10 +49,11 @@ bool RPPG::load(int camIndex, const string &haarPath, const string &dnnProtoPath
     // Reading downsample setting
     int downsample;
     downsample = DEFAULT_DOWNSAMPLE;
+    QString _haarPath, _dnnProtoPath, _dnnModelPath;
 
 #if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
-    QString haarClassifierPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/haarcascade_frontalface_alt.xml";
-    std::ifstream test1(haarClassifierPath.toStdString().c_str());
+    _haarPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/" + haarPath.c_str();
+    std::ifstream test1(_haarPath.toStdString().c_str());
     if (!test1.is_open()) {
         std::cout << "Face classifier xml not found!" << std::endl;
         info = "Face classifier xml not found!";
@@ -60,16 +61,7 @@ bool RPPG::load(int camIndex, const string &haarPath, const string &dnnProtoPath
         return false;
     }
 
-//    cv::CascadeClassifier faceCascade;
-//    if (!faceCascade.load(haarClassifierPath.toStdString())) {
-//        std::cerr << "Error: Could not load face cascade classifier." << std::endl;
-//        std::cerr << "Error description: " << cv::Exception(cv::Error::StsError, "Error opening file", __func__, __FILE__, __LINE__).what() << std::endl;
-//        emit sendInfo(info);
-//        return false;
-//    }
-
-
-    QString _dnnProtoPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/deploy.prototxt";
+    _dnnProtoPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/" + dnnProtoPath.c_str();
     std::ifstream test2(_dnnProtoPath.toStdString().c_str());
     if (!test2.is_open()) {
         std::cout << "DNN proto file not found!" << std::endl;
@@ -78,7 +70,7 @@ bool RPPG::load(int camIndex, const string &haarPath, const string &dnnProtoPath
         return false;
     }
 
-    QString _dnnModelPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/res10_300x300_ssd_iter_140000.caffemodel";
+    _dnnModelPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/" + dnnModelPath.c_str();
     std::ifstream test3(_dnnModelPath.toStdString().c_str());
     if (!test3.is_open()) {
         std::cout << "DNN model file not found!" << std::endl;
@@ -110,6 +102,11 @@ bool RPPG::load(int camIndex, const string &haarPath, const string &dnnProtoPath
         emit sendInfo(info);
         return false;
     }
+
+    _haarPath = haarPath.c_str();
+    _dnnProtoPath = dnnProtoPath.c_str();
+    _dnnModelPath = dnnModelPath.c_str();
+
 #endif
 
     info = "All opencv files stored.";
@@ -121,31 +118,31 @@ bool RPPG::load(int camIndex, const string &haarPath, const string &dnnProtoPath
     double timeBase = 0.0;
     VideoCapture localCap;
 
-    std::future<void> asyncInitialization = std::async(std::launch::async, [&]() {
-        try {
-            localCap.open(camIndex);
-        } catch (cv::Exception& e) {
-            std::cerr << "OpenCV Exception: " << e.what() << std::endl;
-            std::cerr << "Could not open camera with index: " << camIndex << std::endl;
-        }
+//    std::future<void> asyncInitialization = std::async(std::launch::async, [&]() {
+//    });
 
-        if (!localCap.isOpened()) {
-            width = 480;
-            height = 800;
-            timeBase = 0.001;
-        } else {
-            // Load video information
-            width = localCap.get(cv::CAP_PROP_FRAME_WIDTH);
-            height = localCap.get(cv::CAP_PROP_FRAME_HEIGHT);
-            timeBase = 0.001;
+//    asyncInitialization.wait();
 
-            if (localCap.isOpened())
-                localCap.release();
-        }
-    });
+    try {
+        localCap.open(camIndex);
+    } catch (cv::Exception& e) {
+        std::cerr << "OpenCV Exception: " << e.what() << std::endl;
+        std::cerr << "Could not open camera with index: " << camIndex << std::endl;
+    }
 
-    // Wait for the camera initialization to finish
-    asyncInitialization.wait();
+    if (!localCap.isOpened()) {
+        width = 480;
+        height = 800;
+        timeBase = 0.001;
+    } else {
+        // Load video information
+        width = localCap.get(cv::CAP_PROP_FRAME_WIDTH);
+        height = localCap.get(cv::CAP_PROP_FRAME_HEIGHT);
+        timeBase = 0.001;
+
+        if (localCap.isOpened())
+            localCap.release();
+    }
 
     std::string title = offlineMode ? "rPPG offline" : "rPPG online";
 
@@ -164,10 +161,10 @@ bool RPPG::load(int camIndex, const string &haarPath, const string &dnnProtoPath
     // Load classifier
     switch (faceDetAlg) {
     case haar:
-        haarClassifier.load(haarPath);
+        haarClassifier.load(_haarPath.toStdString());
         break;
     case deep:
-        dnnClassifier = readNetFromCaffe(dnnProtoPath, dnnModelPath);
+        dnnClassifier = readNetFromCaffe(_dnnProtoPath.toStdString(), _dnnModelPath.toStdString());
         break;
     }
 
@@ -197,6 +194,8 @@ double RPPG::processFrame(Mat &frameRGB, Mat &frameGray, int time) {
     {
         trackFace(frameGray);
     }
+
+    qDebug() << "faceValid : " << faceValid;
 
     if (faceValid)
     {
@@ -392,7 +391,7 @@ void RPPG::trackFace(Mat &frameGray) {
             corners_0v.push_back(corners_0[j]);
             corners_1v.push_back(corners_1[j]);
         } else {
-            //cout << "Mis!" << std::endl;
+            qDebug() << "Mis! - corners 0v_1v.size : " << corners_0v.size() << corners_1v.size();
         }
     }
 
@@ -405,6 +404,8 @@ void RPPG::trackFace(Mat &frameGray) {
         Mat transform = estimateRigidTransform(corners_0v, corners_1v, false);
 
         if (transform.total() > 0) {
+
+//            qDebug() << "Ok - corners 0v_1v.size : " << corners_0v.size() << corners_1v.size();
 
             // Update box
             Contour2f boxCoords;
@@ -427,7 +428,7 @@ void RPPG::trackFace(Mat &frameGray) {
         }
 
     } else {
-        //cout << "Tracking failed! Not enough corners left." << endl;
+        qDebug() << "Tracking failed! Not enough corners left.";
         invalidateFace();
     }
 }
@@ -567,7 +568,7 @@ void RPPG::estimateHeartrate() {
         bpm = pmax.y * fps / total * SEC_PER_MIN;
         bpms.push_back(bpm);
 
-        //        cout << "FPS=" << fps << " Vals=" << powerSpectrum.rows << " Peak=" << pmax.y << " BPM=" << bpm << endl;
+//        cout << "FPS=" << fps << " Vals=" << powerSpectrum.rows << " Peak=" << pmax.y << " BPM=" << bpm << endl;
     }
 
     if ((time - lastSamplingTime) * timeBase >= 1/samplingFrequency) {
@@ -644,9 +645,9 @@ void RPPG::draw(cv::Mat &frameRGB) {
         if(meanBpm < MAX_BPM)
         {
 #if defined (Q_OS_ANDROID)
-        putText(frameRGB, ss.str(), Point(box.tl().x + 10, box.tl().y + box.height - 10), FONT_HERSHEY_PLAIN, 12, WHITE, 12);
+        putText(frameRGB, ss.str(), Point(box.tl().x + 10, box.tl().y + box.height - 10), FONT_HERSHEY_PLAIN, 12, BLUE_1, 12);
 #else
-        putText(frameRGB, ss.str(), Point(box.tl().x + 10, box.tl().y + box.height - 10), FONT_HERSHEY_PLAIN, 8, WHITE,8);
+        putText(frameRGB, ss.str(), Point(box.tl().x + 10, box.tl().y + box.height - 10), FONT_HERSHEY_PLAIN, 8, BLUE_1,8);
 #endif
         }
     }

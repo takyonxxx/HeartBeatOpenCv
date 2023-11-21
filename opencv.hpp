@@ -13,6 +13,7 @@ namespace cv {
     const Scalar BLUE      (  0,   0, 255);
     const Scalar YELLOW   (  255, 255, 0);
     const Scalar WHITE    (255, 255, 255);
+    const Scalar BLUE_1    (0, 128, 255);
     const Scalar ZERO     (0);
     const Scalar ONE      (1);
 

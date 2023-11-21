@@ -76,8 +76,9 @@ ios {
     QMAKE_ASSET_CATALOGS = $$PWD/ios/Assets.xcassets
     QMAKE_ASSET_CATALOGS_APP_ICON = "AppIcon"
 
-    INCLUDEPATH += /Users/turkaybiliyor/opencv2.framework/include
-#    LIBS += -F /Users/turkaybiliyor/opencv2.framework -framework opencv2
+    INCLUDEPATH += $$(HOME)/opencv2.framework/include
+#    add opencv from xcode, Build Phases -> Link Binary With Libraries
+#    LIBS += -F$$(HOME)/opencv2.framework -framework opencv2
 }
 
 android {

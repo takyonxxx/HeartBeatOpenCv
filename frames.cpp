@@ -58,6 +58,7 @@ Frames::initCam()
             int minDistance = std::numeric_limits<int>::max(); // Initialize to a large value
 
             for (const auto &fmt : formats) {
+                qDebug() << fmt.resolution().width() << "x" << fmt.resolution().height();
                 if (fmt.pixelFormat() == QVideoFrameFormat::Format_NV12) {
                     int distance = calculateDistance(1280, 720, fmt.resolution().width(), fmt.resolution().height());
 

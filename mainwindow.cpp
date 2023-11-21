@@ -12,15 +12,17 @@ MainWindow::MainWindow(QWidget *parent)
     ui->m_textStatus->setStyleSheet("font-size: 12pt; color: #cccccc; background-color: #003333;");
 #else
     ui->textBpm->setStyleSheet("font-size: 36pt; font: bold; color:#ECF0F1; background-color: #212F3C; padding: 6px; spacing: 6px;");
-    ui->m_textStatus->setStyleSheet("font-size: 24pt; color: #cccccc; background-color: #003333;");
+    ui->m_textStatus->setStyleSheet("font-size: 18pt; color: #cccccc; background-color: #003333;");
 #endif
     ui->graphicsView->setStyleSheet("font-size: 24pt; color:#ECF0F1; background-color: #212F3C; padding: 6px; spacing: 6px;");
     ui->pushExit->setStyleSheet("font-size: 24pt; font: bold; color: #ffffff; background-color: #336699;");    
 
     //QString currentTime = QDateTime::currentDateTime().toString("yyyyMMddhhmmss");
     ui->graphicsView->setScene(new QGraphicsScene(this));
-    setGeometry(0,0,1024,1024);
-    setMaximumSize(QSize(1024, 1024));
+    QScreen *primaryScreen = QGuiApplication::primaryScreen();
+    QRect screenGeometry = primaryScreen->availableGeometry();
+    setGeometry(screenGeometry);
+
     ui->graphicsView->scene()->addItem(&pixmap);
 
     QString fileName = ":/opencv/deploy.prototxt";
@@ -77,7 +79,7 @@ void MainWindow::createFile(const QString &fileName)
     QFile temp(tempFilePath);
 
     if (temp.exists()) {
-        qDebug() << "Error: File already exists: " << tempFilePath;
+        qDebug() << "Warning: File already exists: " << tempFilePath;
         return;
     }
 
@@ -114,7 +116,7 @@ void MainWindow::processFrame(QVideoFrame &frame)
 
         if(!frameRGB.empty())
         {
-            #if !defined(Q_OS_IOS) && !defined(Q_OS_ANDROID)
+//            #if !defined(Q_OS_IOS) && !defined(Q_OS_ANDROID)
 
             Mat frameGray;
             double bpm = 0.0;
@@ -133,7 +135,7 @@ void MainWindow::processFrame(QVideoFrame &frame)
                 ss << std::fixed << std::setprecision(1) << bpm;
                 printBpm(ss.str().c_str());
             }
-            #endif
+//            #endif
 
             QImage img_face((uchar*)frameRGB.data, frameRGB.cols, frameRGB.rows, frameRGB.step, QImage::Format_RGB888);
             //            QImage img_face((uchar*)frameGray.data, frameGray.cols, frameGray.rows, frameGray.step, QImage::Format_Grayscale8);
