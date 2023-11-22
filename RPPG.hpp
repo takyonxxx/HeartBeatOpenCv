@@ -5,6 +5,7 @@
 #include <string>
 #include <stdio.h>
 #include <iostream>
+#include <chrono>
 #include <vector>
 #include <map>
 #include <string>
@@ -44,7 +45,7 @@ public:
     explicit RPPG(QObject *parent = nullptr);
     // Load Settings
     bool load(int camIndex, const string &haarPath, const string &dnnProtoPath, const string &dnnModelPath);
-    double processFrame(Mat &frameRGB, Mat &frameGray, int time);
+    double processFrame(Mat &frameRGB, Mat &frameGray);
     void exit();
 
 private:
@@ -63,6 +64,13 @@ private:
     void estimateHeartrate();
     void draw(Mat &frameRGB);
     void invalidateFace();
+
+
+    int64_t get_current_time()
+    {
+        int64_t tickCount = cv::getTickCount();
+        return static_cast<int64_t>((tickCount * 1000.0) / cv::getTickFrequency());
+    }
 
     static bool to_bool(string s) {
         bool result;
@@ -111,11 +119,11 @@ private:
     bool guiMode;
 
     // State variables
-    int64_t time;
+    int process_time;
+    int lastSamplingTime;
+    int64_t lastScanTime;
     double fps;
     int high;
-    int64_t lastSamplingTime;
-    int64_t lastScanTime;
     int low;
     int64_t now;
     bool faceValid;

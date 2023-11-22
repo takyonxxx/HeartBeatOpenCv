@@ -118,10 +118,10 @@ bool RPPG::load(int camIndex, const string &haarPath, const string &dnnProtoPath
     double timeBase = 0.0;
     VideoCapture localCap;
 
-//    std::future<void> asyncInitialization = std::async(std::launch::async, [&]() {
-//    });
+    //    std::future<void> asyncInitialization = std::async(std::launch::async, [&]() {
+    //    });
 
-//    asyncInitialization.wait();
+    //    asyncInitialization.wait();
 
     try {
         localCap.open(camIndex);
@@ -174,28 +174,25 @@ bool RPPG::load(int camIndex, const string &haarPath, const string &dnnProtoPath
 void RPPG::exit() {   
 }
 
-double RPPG::processFrame(Mat &frameRGB, Mat &frameGray, int time) {
+double RPPG::processFrame(Mat &frameRGB, Mat &frameGray) {
 
-    // Set time
-    this->time = time;
+    this->process_time = get_current_time();
 
     if (!faceValid)
     {
-        lastScanTime = time;
+        lastScanTime = process_time;
         detectFace(frameRGB, frameGray);
 
     }
-    else if ((time - lastScanTime) * timeBase >= 1/rescanFrequency) {
-        lastScanTime = time;
+    else if ((process_time - lastScanTime) * timeBase >= 1/rescanFrequency) {
+        lastScanTime = process_time;
         detectFace(frameRGB, frameGray);
         rescanFlag = true;
     }
     else
     {
         trackFace(frameGray);
-    }
-
-    qDebug() << "faceValid : " << faceValid;
+    }    
 
     if (faceValid)
     {
@@ -216,7 +213,7 @@ double RPPG::processFrame(Mat &frameRGB, Mat &frameGray, int time) {
         // Add new values to raw signal buffer
         double values[] = {means(0), means(1), means(2)};
         s.push_back(Mat(1, 3, CV_64F, values));
-        t.push_back(time);
+        t.push_back(process_time);
 
         // Save rescan flag
         re.push_back(rescanFlag);
@@ -228,8 +225,10 @@ double RPPG::processFrame(Mat &frameRGB, Mat &frameGray, int time) {
         low = (int)(s.rows * LOW_BPM / SEC_PER_MIN / fps);
         high = (int)(s.rows * HIGH_BPM / SEC_PER_MIN / fps) + 1;
 
+        int valid_signal = fps * minSignalSize;      
+
         // If valid signal is large enough: estimate
-        if (s.rows >= fps * minSignalSize) {
+        if (s.rows >= valid_signal) {
 
             // Filtering
             switch (rPPGAlg) {
@@ -301,7 +300,7 @@ void RPPG::detectFace(Mat &frameRGB, Mat &frameGray) {
 
     if (boxes.size() > 0) {
 
-        //cout << "Found a face" << endl;
+        //        cout << "Found a face" << endl;
 
         setNearestBox(boxes);
         detectCorners(frameGray);
@@ -310,8 +309,6 @@ void RPPG::detectFace(Mat &frameRGB, Mat &frameGray) {
         faceValid = true;
 
     } else {
-
-        //cout << "Found no face" << endl;
         invalidateFace();
     }
 }
@@ -391,7 +388,7 @@ void RPPG::trackFace(Mat &frameGray) {
             corners_0v.push_back(corners_0[j]);
             corners_1v.push_back(corners_1[j]);
         } else {
-            qDebug() << "Mis! - corners 0v_1v.size : " << corners_0v.size() << corners_1v.size();
+            qDebug() << "Mis! ";
         }
     }
 
@@ -404,8 +401,6 @@ void RPPG::trackFace(Mat &frameGray) {
         Mat transform = estimateRigidTransform(corners_0v, corners_1v, false);
 
         if (transform.total() > 0) {
-
-//            qDebug() << "Ok - corners 0v_1v.size : " << corners_0v.size() << corners_1v.size();
 
             // Update box
             Contour2f boxCoords;
@@ -439,9 +434,6 @@ void RPPG::updateROI() {
 }
 
 void RPPG::updateMask(Mat &frameGray) {
-
-    //cout << "Update mask" << endl;
-
     mask = Mat::zeros(frameGray.size(), frameGray.type());
     rectangle(mask, this->roi, WHITE, FILLED);
 }
@@ -567,24 +559,26 @@ void RPPG::estimateHeartrate() {
         // calculate BPM
         bpm = pmax.y * fps / total * SEC_PER_MIN;
         bpms.push_back(bpm);
+    }   
 
-//        cout << "FPS=" << fps << " Vals=" << powerSpectrum.rows << " Peak=" << pmax.y << " BPM=" << bpm << endl;
-    }
+    // Print the current time in milliseconds
+    std::cout << process_time << " " << lastSamplingTime << " " << get_current_time() << std::endl;
 
-    if ((time - lastSamplingTime) * timeBase >= 1/samplingFrequency) {
-        lastSamplingTime = time;
+    //    if ((process_time - lastSamplingTime) * timeBase >= 1/samplingFrequency) {
 
-        cv::sort(bpms, bpms, SORT_EVERY_COLUMN);
+    this->lastSamplingTime = get_current_time();
 
-        // average calculated BPMs since last sampling time
-        meanBpm = mean(bpms)(0);
-        minBpm = bpms.at<double>(0, 0);
-        maxBpm = bpms.at<double>(bpms.rows-1, 0);
+    cv::sort(bpms, bpms, SORT_EVERY_COLUMN);
 
-        //        std::cout << "meanBPM=" << meanBpm << " minBpm=" << minBpm << " maxBpm=" << maxBpm << std::endl;
+    // average calculated BPMs since last sampling time
+    meanBpm = mean(bpms)(0);
+    minBpm = bpms.at<double>(0, 0);
+    maxBpm = bpms.at<double>(bpms.rows-1, 0);
 
-        bpms.pop_back(bpms.rows);
-    }
+    //        std::cout << "meanBPM=" << meanBpm << " minBpm=" << minBpm << " maxBpm=" << maxBpm << std::endl;
+
+    bpms.pop_back(bpms.rows);
+    //    }
 }
 
 void RPPG::draw(cv::Mat &frameRGB) {
@@ -640,14 +634,14 @@ void RPPG::draw(cv::Mat &frameRGB) {
     // Draw BPM text
     if (faceValid) {
         ss << std::fixed << std::setprecision(0) << meanBpm;
-//        std::cout << "meanBPM=" << ss.str() << " minBpm=" << minBpm << " maxBpm=" << maxBpm << std::endl;
+        //        std::cout << "meanBPM=" << ss.str() << " minBpm=" << minBpm << " maxBpm=" << maxBpm << std::endl;
 
         if(meanBpm < MAX_BPM)
         {
 #if defined (Q_OS_ANDROID)
-        putText(frameRGB, ss.str(), Point(box.tl().x + 10, box.tl().y + box.height - 10), FONT_HERSHEY_PLAIN, 12, BLUE_1, 12);
+            putText(frameRGB, ss.str(), Point(box.tl().x + 10, box.tl().y + box.height - 10), FONT_HERSHEY_PLAIN, 12, BLUE_1, 12);
 #else
-        putText(frameRGB, ss.str(), Point(box.tl().x + 10, box.tl().y + box.height - 10), FONT_HERSHEY_PLAIN, 8, BLUE_1,8);
+            putText(frameRGB, ss.str(), Point(box.tl().x + 10, box.tl().y + box.height - 10), FONT_HERSHEY_PLAIN, 8, BLUE_1,8);
 #endif
         }
     }

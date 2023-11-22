@@ -125,10 +125,7 @@ void MainWindow::processFrame(QVideoFrame &frame)
             cvtColor((InputArray)frameRGB, (OutputArray)frameGray, COLOR_BGR2GRAY);
             equalizeHist((InputArray)frameGray, (OutputArray)frameGray);
 
-            int time;
-            time = (cv::getTickCount()*1000.0)/cv::getTickFrequency();
-
-            bpm = rppg->processFrame(frameRGB, frameGray, time);
+            bpm = rppg->processFrame(frameRGB, frameGray);
             if(bpm < MAX_BPM)
             {
                 std::stringstream ss;
