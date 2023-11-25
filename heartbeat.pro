@@ -1,6 +1,4 @@
 QT += core gui
-QT += multimedia
-QT += multimediawidgets
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -8,6 +6,10 @@ CONFIG += c++17
 
 TEMPLATE = app
 TARGET = heartbeat
+
+QT += multimedia
+QT += multimediawidgets
+
 
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -29,16 +31,8 @@ HEADERS += \
 FORMS += \
     mainwindow.ui
 
-
 win32 {
     message("Win32 enabled")
-
-
-    # Default rules for deployment.
-    qnx: target.path = /tmp/$${TARGET}/bin
-    else: unix:!android: target.path = /opt/$${TARGET}/bin
-    !isEmpty(target.path): INSTALLS += target
-
     RC_ICONS += $$\PWD\icons\heart-rate.png
     LIBS += -L$$(OPENCV_DIR)/lib -lopencv_world452
     INCLUDEPATH += C:/opencv/build/include
@@ -46,12 +40,7 @@ win32 {
 
 unix:!macx:!ios:!android {
     message("linux enabled")
-
-    # Default rules for deployment.
-    qnx: target.path = /tmp/$${TARGET}/bin
-    else: unix:!android: target.path = /opt/$${TARGET}/bin
-    !isEmpty(target.path): INSTALLS += target
-
+    #sudo apt install libopencv-dev
     INCLUDEPATH += /usr/lib
     INCLUDEPATH += /usr/local/lib
     INCLUDEPATH += /usr/local/include/opencv4
