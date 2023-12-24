@@ -42,7 +42,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_frames, &Frames::frameCaptured, this, &MainWindow::processFrame);
     connect(m_frames, &Frames::cameraListUpdated, this, &MainWindow::onCameraListUpdated);
     m_frames->initializeCameraDevices();
-    ui->cameraComboBox->setCurrentIndex(1);
+    #if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
+        ui->cameraComboBox->setCurrentIndex(1);
+    #endif
 }
 
 MainWindow::~MainWindow()

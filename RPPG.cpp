@@ -174,7 +174,6 @@ void RPPG::exit() {
 double RPPG::processFrame(Mat &frameRGB, Mat &frameGray) {
 
     process_time = get_current_time();
-//    process_time_ios = QDateTime::currentDateTimeUtc().toMSecsSinceEpoch()/1000.0;
 
     if (!faceValid)
     {
@@ -211,7 +210,13 @@ double RPPG::processFrame(Mat &frameRGB, Mat &frameGray) {
         // Add new values to raw signal buffer
         double values[] = {means(0), means(1), means(2)};
         s.push_back(Mat(1, 3, CV_64F, values));
-        t.push_back(static_cast<int>(process_time));
+
+//        QDateTime currentTime = QDateTime::currentDateTimeUtc();
+//        qint64 currentTimeInMilliseconds = currentTime.toMSecsSinceEpoch();
+//        cv::Mat matTime = cv::Mat(1, 1, CV_64F);  // Use CV_64F for long long
+//        matTime.at<double>(0, 0) = static_cast<double>(currentTimeInMilliseconds);
+
+        t.push_back(process_time);
 
         // Save rescan flag
         re.push_back(rescanFlag);
@@ -559,7 +564,7 @@ void RPPG::estimateHeartrate() {
         bpms.push_back(bpm);
     }
 
-//    qDebug() << process_time << lastSamplingTime;
+    qDebug() << process_time << lastSamplingTime;
 
     if ((process_time - lastSamplingTime) * timeBase >= 1/samplingFrequency) {
 
