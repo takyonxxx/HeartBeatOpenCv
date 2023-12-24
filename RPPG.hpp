@@ -67,19 +67,19 @@ private:
     void draw(Mat &frameRGB);
     void invalidateFace();
 
-    double get_current_time()
+    int get_current_time()
     {
 //        qint64 currentTimeEpoch = QDateTime::currentDateTimeUtc().toMSecsSinceEpoch();
         int64 tickCount = cv::getTickCount();
         double timeInMilliseconds = (tickCount * 1000.0) / cv::getTickFrequency();
 
         // Check for overflow before casting to int
-        if (tickCount < std::numeric_limits<int64>::min() || tickCount > std::numeric_limits<int64>::max())
+        if (timeInMilliseconds < std::numeric_limits<int>::min() || timeInMilliseconds > std::numeric_limits<int>::max())
         {
-            qDebug() << "Error overflow.";
+            qDebug() << "Error : overflow int.";
             return 0;
         }
-        return timeInMilliseconds;
+        return static_cast<int>(timeInMilliseconds);
     }
 
     static bool to_bool(string s) {

@@ -559,7 +559,7 @@ void RPPG::estimateHeartrate() {
         bpms.push_back(bpm);
     }
 
-    qDebug() << process_time << lastSamplingTime;
+//    qDebug() << process_time << lastSamplingTime;
 
     if ((process_time - lastSamplingTime) * timeBase >= 1/samplingFrequency) {
 
