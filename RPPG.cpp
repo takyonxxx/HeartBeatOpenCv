@@ -10,10 +10,10 @@ using namespace std;
 #define HIGH_BPM 240
 #define REL_MIN_FACE_SIZE 0.4
 #define SEC_PER_MIN 60
-#define MAX_CORNERS 25
-#define MIN_CORNERS 1
+#define MAX_CORNERS 10
+#define MIN_CORNERS 3
 #define QUALITY_LEVEL 0.01
-#define MIN_DISTANCE 25
+#define MIN_DISTANCE 20
 
 RPPG::RPPG(QObject* parent)
     :QObject(parent)
@@ -154,6 +154,9 @@ bool RPPG::load(int camIndex, const string &haarPath, const string &dnnProtoPath
     this->rescanFrequency = rescanFrequency;
     this->samplingFrequency = samplingFrequency;
     this->timeBase = timeBase;
+#if defined(Q_OS_IOS)
+    this->time_correction = 10;
+#endif
 
     // Load classifier
     switch (faceDetAlg) {
@@ -181,7 +184,7 @@ double RPPG::processFrame(Mat &frameRGB, Mat &frameGray) {
         detectFace(frameRGB, frameGray);
 
     }
-    else if ((process_time - lastScanTime) * timeBase >= 1/rescanFrequency) {
+    else if ((process_time - lastScanTime) * timeBase * time_correction >= 1/rescanFrequency) {
         lastScanTime = process_time;
         detectFace(frameRGB, frameGray);
         rescanFlag = true;
@@ -211,12 +214,12 @@ double RPPG::processFrame(Mat &frameRGB, Mat &frameGray) {
         double values[] = {means(0), means(1), means(2)};
         s.push_back(Mat(1, 3, CV_64F, values));
 
-//        QDateTime currentTime = QDateTime::currentDateTimeUtc();
-//        qint64 currentTimeInMilliseconds = currentTime.toMSecsSinceEpoch();
-//        cv::Mat matTime = cv::Mat(1, 1, CV_64F);  // Use CV_64F for long long
-//        matTime.at<double>(0, 0) = static_cast<double>(currentTimeInMilliseconds);
+        //        QDateTime currentTime = QDateTime::currentDateTimeUtc();
+        //        qint64 currentTimeInMilliseconds = currentTime.toMSecsSinceEpoch();
+        //        cv::Mat matTime = cv::Mat(1, 1, CV_64F);  // Use CV_64F for long long
+        //        matTime.at<double>(0, 0) = static_cast<double>(currentTimeInMilliseconds);
 
-        t.push_back(process_time);
+        t.push_back(process_time* time_correction);
 
         // Save rescan flag
         re.push_back(rescanFlag);
@@ -564,12 +567,8 @@ void RPPG::estimateHeartrate() {
         bpms.push_back(bpm);
     }
 
-    qDebug() << process_time << lastSamplingTime;
-
-    if ((process_time - lastSamplingTime) * timeBase >= 1/samplingFrequency) {
-
+    if ((process_time - lastSamplingTime) * timeBase * time_correction >= 1/samplingFrequency) {
         lastSamplingTime = get_current_time();
-
         cv::sort(bpms, bpms, SORT_EVERY_COLUMN);
         // average calculated BPMs since last sampling time
         meanBpm = mean(bpms)(0);
@@ -606,11 +605,11 @@ void RPPG::draw(cv::Mat &frameRGB) {
         Point p2;
         for (int i = 1; i < s_f.rows; i++) {
             p2 = Point(drawAreaTlX + i * widthMult, drawAreaTlY + (vmax - s_f.at<double>(i, 0))*heightMult);
-            line(frameRGB, p1, p2, YELLOW, 3);
+            line(frameRGB, p1, p2, YELLOW, 1);
             p1 = p2;
         }
 
-        // Draw powerSpectrum
+        //         Draw powerSpectrum
         //        const int total = s_f.rows;
         //        Mat bandMask = Mat::zeros(s_f.size(), CV_8U);
         //        bandMask.rowRange(min(low, total), min(high, total) + 1).setTo(ONE);
@@ -632,8 +631,6 @@ void RPPG::draw(cv::Mat &frameRGB) {
     // Draw BPM text
     if (faceValid) {
         ss << std::fixed << std::setprecision(0) << meanBpm;
-        //        std::cout << "meanBPM=" << ss.str() << " minBpm=" << minBpm << " maxBpm=" << maxBpm << std::endl;
-
         if(meanBpm < MAX_BPM)
         {
 #if defined (Q_OS_ANDROID)
@@ -645,9 +642,9 @@ void RPPG::draw(cv::Mat &frameRGB) {
     }
 
     // Draw FPS text
-    //    ss.str("");
-    //    ss << fps << " fps";
-    //    putText(frameRGB, ss.str(), Point(box.tl().x, box.br().y + 60), FONT_HERSHEY_PLAIN, 4, GREEN, 4);
+    ss.str("");
+    ss << fps << " fps";
+    putText(frameRGB, ss.str(), Point(box.tl().x, box.br().y + 60), FONT_HERSHEY_PLAIN, 4, GREEN, 4);
 
     // Draw corners
     for (unsigned int i = 0; i < corners.size(); i++) {

@@ -21,8 +21,8 @@
 #define DEFAULT_FACEDET_ALGORITHM "haar"
 #define DEFAULT_RESCAN_FREQUENCY 1
 #define DEFAULT_SAMPLING_FREQUENCY 1
-#define DEFAULT_MIN_SIGNAL_SIZE 5
-#define DEFAULT_MAX_SIGNAL_SIZE 5
+#define DEFAULT_MIN_SIGNAL_SIZE 10
+#define DEFAULT_MAX_SIGNAL_SIZE 15
 #define DEFAULT_DOWNSAMPLE 1 // x means only every xth frame is used
 #define MAX_BPM 500
 
@@ -69,9 +69,8 @@ private:
 
     int get_current_time()
     {
-//        qint64 currentTimeEpoch = QDateTime::currentDateTimeUtc().toMSecsSinceEpoch();
         int64 tickCount = cv::getTickCount();
-        double timeInMilliseconds = (tickCount * 1000.0) / cv::getTickFrequency();
+        double timeInMilliseconds = (tickCount * 1000.0 / time_correction) / cv::getTickFrequency();
 
         // Check for overflow before casting to int
         if (timeInMilliseconds < std::numeric_limits<int>::min() || timeInMilliseconds > std::numeric_limits<int>::max())
@@ -129,6 +128,7 @@ private:
     bool guiMode;
 
     // State variables
+    int time_correction = 1;
     int process_time= 0;
     int lastSamplingTime= 0;
     int lastScanTime= 0;
