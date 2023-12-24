@@ -42,8 +42,11 @@ private slots:
     void processImage(QImage&);
     void printInfo(QString);
     void printBpm(QString);
+    void onCameraListUpdated(const QStringList &);
 
     void on_pushExit_clicked();
+
+    void on_cameraComboBox_currentIndexChanged(int index);
 
 private:
     Ui::MainWindow *ui;

@@ -55,8 +55,8 @@ macos {
     QMAKE_ASSET_CATALOGS = $$PWD/macos/Assets.xcassets
     QMAKE_ASSET_CATALOGS_APP_ICON = "AppIcon"
 
-    INCLUDEPATH += /opt/homebrew/Cellar/opencv/4.8.1_3/include/opencv4
-    LIBS += -L/opt/homebrew/Cellar/opencv/4.8.1_3/lib -lopencv_core -lopencv_dnn -lopencv_highgui -lopencv_imgcodecs -lopencv_imgproc -lopencv_objdetect -lopencv_video -lopencv_videoio
+    INCLUDEPATH += /opt/homebrew/Cellar/opencv/4.8.1_4/include/opencv4
+    LIBS += -L/opt/homebrew/Cellar/opencv/4.8.1_4/lib -lopencv_core -lopencv_dnn -lopencv_highgui -lopencv_imgcodecs -lopencv_imgproc -lopencv_objdetect -lopencv_video -lopencv_videoio
  }
 
 ios {

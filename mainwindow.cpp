@@ -15,6 +15,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->m_textStatus->setStyleSheet("font-size: 18pt; color: #cccccc; background-color: #003333;");
 #endif
     ui->graphicsView->setStyleSheet("font-size: 24pt; color:#ECF0F1; background-color: #212F3C; padding: 6px; spacing: 6px;");
+    ui->cameraComboBox->setStyleSheet("font-size: 18pt; font: bold; color: #ffffff; background-color: orange;");
     ui->pushExit->setStyleSheet("font-size: 24pt; font: bold; color: #ffffff; background-color: #336699;");    
 
     //QString currentTime = QDateTime::currentDateTime().toString("yyyyMMddhhmmss");
@@ -39,7 +40,9 @@ MainWindow::MainWindow(QWidget *parent)
     m_frames = new Frames();
     connect(m_frames, &Frames::sendInfo, this, &MainWindow::printInfo);
     connect(m_frames, &Frames::frameCaptured, this, &MainWindow::processFrame);
-    m_frames->initCam();
+    connect(m_frames, &Frames::cameraListUpdated, this, &MainWindow::onCameraListUpdated);
+    m_frames->initializeCameraDevices();
+    ui->cameraComboBox->setCurrentIndex(1);
 }
 
 MainWindow::~MainWindow()
@@ -151,7 +154,7 @@ void MainWindow::processImage(QImage &img_face)
 
 void MainWindow::printInfo(QString info)
 {
-    ui->m_textStatus->append(info);
+    ui->m_textStatus->setText(info);
 }
 
 void MainWindow::printBpm(QString bpm)
@@ -162,5 +165,17 @@ void MainWindow::printBpm(QString bpm)
 void MainWindow::on_pushExit_clicked()
 {
     qApp->exit();
+}
+
+void MainWindow::onCameraListUpdated(const QStringList &cameraDevices)
+{
+    ui->cameraComboBox->clear();
+    ui->cameraComboBox->addItems(cameraDevices);
+}
+
+void MainWindow::on_cameraComboBox_currentIndexChanged(int index)
+{
+    QString selectedText = ui->cameraComboBox->itemText(index);    
+    m_frames->setCamera(selectedText);
 }
 

@@ -14,7 +14,7 @@ Frames::~Frames()
 
 void
 Frames::newFrame( const QVideoFrame & frame )
-{    
+{
 
     QVideoFrame f = frame;
     f.map( QVideoFrame::ReadOnly );
@@ -26,43 +26,62 @@ Frames::newFrame( const QVideoFrame & frame )
     }
 }
 
-void
-Frames::initCam()
+void Frames::initializeCameraDevices()
 {
-    auto cameraDevice = new QCamera(QMediaDevices::defaultVideoInput());
+    // Assuming you have a member variable to store the camera devices
+    QStringList cameraDeviceList;
+
+    // Add the rest of the video input devices
     const QList<QCameraDevice> cameras = QMediaDevices::videoInputs();
     for (const QCameraDevice &cDevice : cameras)
-    {       
-        if (cDevice.position() == QCameraDevice::FrontFace)
+    {
+        cameraDeviceList.append(cDevice.description());
+    }
+
+    // Emit the signal with the updated list
+    emit cameraListUpdated(cameraDeviceList);
+}
+
+
+void Frames::setCamera(const QString &cameraDescription)
+{
+    QCamera *selectedCamera = nullptr;
+    const QList<QCameraDevice> cameras = QMediaDevices::videoInputs();
+    // Find the QCameraDevice with the selected description
+    for (const QCameraDevice &cDevice : cameras)
+    {
+        if (cDevice.description() == cameraDescription)
         {
-            cameraDevice = new QCamera(cDevice);
-        }
-        if (cDevice.description().contains("Front Camera"))
-        {
-            cameraDevice = new QCamera(cDevice);
+            selectedCamera = new QCamera(cDevice);
+            break;
         }
     }
 
-    if(cameraDevice == nullptr)
+    if (selectedCamera == nullptr)
     {
-        emit sendInfo("Camera Not Found!");
+        emit sendInfo("Selected camera not found!");
         return;
     }
 
-    m_cam.reset(cameraDevice);
+    m_cam.reset(selectedCamera);
 
-    if (m_cam->cameraFormat().isNull()) {
-        auto formats = cameraDevice->cameraDevice().videoFormats();
-        if (!formats.isEmpty()) {
+    if (m_cam->cameraFormat().isNull())
+    {
+        auto formats = m_cam->cameraDevice().videoFormats();
+        if (!formats.isEmpty())
+        {
             QCameraFormat bestFormat;
             int minDistance = std::numeric_limits<int>::max(); // Initialize to a large value
 
-            for (const auto &fmt : formats) {
-                qDebug() << fmt.resolution().width() << "x" << fmt.resolution().height();
-                if (fmt.pixelFormat() == QVideoFrameFormat::Format_NV12) {
+            for (const auto &fmt : formats)
+            {
+                //                qDebug() << fmt.resolution().width() << "x" << fmt.resolution().height();
+                if (fmt.pixelFormat() == QVideoFrameFormat::Format_NV12)
+                {
                     int distance = calculateDistance(1280, 720, fmt.resolution().width(), fmt.resolution().height());
 
-                    if (distance < minDistance) {
+                    if (distance < minDistance)
+                    {
                         minDistance = distance;
                         bestFormat = fmt;
                     }
@@ -73,17 +92,20 @@ Frames::initCam()
         }
     }
 
-    m_cam->setFocusMode( QCamera::FocusModeAuto );
+    m_cam->setFocusMode(QCamera::FocusModeAuto);
 
     auto camFormat = m_cam->cameraFormat();
-    auto m_formatString = QString( "%1x%2 at %3 fps, format %4" ).arg( QString::number( camFormat.resolution().width() ),
-                                                             QString::number( camFormat.resolution().height() ), QString::number( (int) camFormat.maxFrameRate() ),
-                                                             QVideoFrameFormat::pixelFormatToString( camFormat.pixelFormat() ));
+    auto m_formatString = QString("%1x%2 at %3 fps, %4, %5").arg(
+        QString::number(camFormat.resolution().width()),
+        QString::number(camFormat.resolution().height()),
+        QString::number(static_cast<int>(camFormat.maxFrameRate())),
+        QVideoFrameFormat::pixelFormatToString(camFormat.pixelFormat()),
+        m_cam->cameraDevice().description());
+
     emit sendInfo(m_formatString);
 
-    m_capture.setCamera( m_cam.get());
-    m_capture.setVideoSink( this );
-
+    m_capture.setCamera(m_cam.get());
+    m_capture.setVideoSink(this);
     m_cam->start();
 }
 

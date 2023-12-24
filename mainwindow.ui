@@ -95,14 +95,21 @@
         <widget class="QWidget" name="viewfinderPage">
          <layout class="QGridLayout" name="gridLayout_5">
           <item row="3" column="0">
+           <widget class="QTextBrowser" name="m_textStatus">
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>30</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
            <widget class="QPushButton" name="pushExit">
             <property name="text">
              <string>Exit</string>
             </property>
            </widget>
-          </item>
-          <item row="0" column="0">
-           <widget class="QGraphicsView" name="graphicsView"/>
           </item>
           <item row="1" column="0">
            <widget class="QLabel" name="textBpm">
@@ -114,15 +121,11 @@
             </property>
            </widget>
           </item>
+          <item row="0" column="0">
+           <widget class="QGraphicsView" name="graphicsView"/>
+          </item>
           <item row="2" column="0">
-           <widget class="QTextBrowser" name="m_textStatus">
-            <property name="maximumSize">
-             <size>
-              <width>16777215</width>
-              <height>60</height>
-             </size>
-            </property>
-           </widget>
+           <widget class="QComboBox" name="cameraComboBox"/>
           </item>
          </layout>
         </widget>

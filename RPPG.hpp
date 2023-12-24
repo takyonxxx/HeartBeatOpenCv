@@ -8,10 +8,12 @@
 #include <chrono>
 #include <vector>
 #include <map>
+#include <limits>
 #include <string>
 #include <algorithm>
 #include <QDebug>
 #include <QCamera>
+#include <QDateTime>
 #include <QStandardPaths>
 #include <opencv2/opencv.hpp>
 
@@ -65,11 +67,19 @@ private:
     void draw(Mat &frameRGB);
     void invalidateFace();
 
-
-    int64_t get_current_time()
+    double get_current_time()
     {
-        int64_t tickCount = cv::getTickCount();
-        return static_cast<int64_t>((tickCount * 1000.0) / cv::getTickFrequency());
+//        qint64 currentTimeEpoch = QDateTime::currentDateTimeUtc().toMSecsSinceEpoch();
+        int64 tickCount = cv::getTickCount();
+        double timeInMilliseconds = (tickCount * 1000.0) / cv::getTickFrequency();
+
+        // Check for overflow before casting to int
+        if (tickCount < std::numeric_limits<int64>::min() || tickCount > std::numeric_limits<int64>::max())
+        {
+            qDebug() << "Error overflow.";
+            return 0;
+        }
+        return timeInMilliseconds;
     }
 
     static bool to_bool(string s) {
@@ -119,9 +129,9 @@ private:
     bool guiMode;
 
     // State variables
-    int process_time;
-    int lastSamplingTime;
-    int64_t lastScanTime;
+    int process_time= 0;
+    int lastSamplingTime= 0;
+    int lastScanTime= 0;
     double fps;
     int high;
     int low;

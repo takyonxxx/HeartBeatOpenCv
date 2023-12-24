@@ -107,10 +107,7 @@ bool RPPG::load(int camIndex, const string &haarPath, const string &dnnProtoPath
     _dnnProtoPath = dnnProtoPath.c_str();
     _dnnModelPath = dnnModelPath.c_str();
 
-#endif
-
-    info = "All opencv files stored.";
-    emit sendInfo(info);
+#endif    
 
     bool offlineMode = false;
     int width = 0;
@@ -176,7 +173,8 @@ void RPPG::exit() {
 
 double RPPG::processFrame(Mat &frameRGB, Mat &frameGray) {
 
-    this->process_time = get_current_time();
+    process_time = get_current_time();
+//    process_time_ios = QDateTime::currentDateTimeUtc().toMSecsSinceEpoch()/1000.0;
 
     if (!faceValid)
     {
@@ -213,7 +211,7 @@ double RPPG::processFrame(Mat &frameRGB, Mat &frameGray) {
         // Add new values to raw signal buffer
         double values[] = {means(0), means(1), means(2)};
         s.push_back(Mat(1, 3, CV_64F, values));
-        t.push_back(process_time);
+        t.push_back(static_cast<int>(process_time));
 
         // Save rescan flag
         re.push_back(rescanFlag);
@@ -559,26 +557,21 @@ void RPPG::estimateHeartrate() {
         // calculate BPM
         bpm = pmax.y * fps / total * SEC_PER_MIN;
         bpms.push_back(bpm);
-    }   
+    }
 
-    // Print the current time in milliseconds
-    std::cout << process_time << " " << lastSamplingTime << " " << get_current_time() << std::endl;
+    qDebug() << process_time << lastSamplingTime;
 
-    //    if ((process_time - lastSamplingTime) * timeBase >= 1/samplingFrequency) {
+    if ((process_time - lastSamplingTime) * timeBase >= 1/samplingFrequency) {
 
-    this->lastSamplingTime = get_current_time();
+        lastSamplingTime = get_current_time();
 
-    cv::sort(bpms, bpms, SORT_EVERY_COLUMN);
-
-    // average calculated BPMs since last sampling time
-    meanBpm = mean(bpms)(0);
-    minBpm = bpms.at<double>(0, 0);
-    maxBpm = bpms.at<double>(bpms.rows-1, 0);
-
-    //        std::cout << "meanBPM=" << meanBpm << " minBpm=" << minBpm << " maxBpm=" << maxBpm << std::endl;
-
-    bpms.pop_back(bpms.rows);
-    //    }
+        cv::sort(bpms, bpms, SORT_EVERY_COLUMN);
+        // average calculated BPMs since last sampling time
+        meanBpm = mean(bpms)(0);
+        minBpm = bpms.at<double>(0, 0);
+        maxBpm = bpms.at<double>(bpms.rows-1, 0);
+        bpms.pop_back(bpms.rows);
+    }
 }
 
 void RPPG::draw(cv::Mat &frameRGB) {
