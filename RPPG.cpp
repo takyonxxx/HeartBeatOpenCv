@@ -10,7 +10,7 @@ using namespace std;
 #define HIGH_BPM 240
 #define REL_MIN_FACE_SIZE 0.4
 #define SEC_PER_MIN 60
-#define MAX_CORNERS 10
+#define MAX_CORNERS 12
 #define MIN_CORNERS 3
 #define QUALITY_LEVEL 0.01
 #define MIN_DISTANCE 20
