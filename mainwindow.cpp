@@ -1,50 +1,58 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
 
-#if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
-    ui->textBpm->setStyleSheet("font-size: 12pt; font: bold; color:#ECF0F1; background-color: #212F3C; padding: 6px; spacing: 6px;");
-    ui->m_textStatus->setStyleSheet("font-size: 12pt; color: #cccccc; background-color: #003333;");
-#else
-    ui->textBpm->setStyleSheet("font-size: 36pt; font: bold; color:#ECF0F1; background-color: #212F3C; padding: 6px; spacing: 6px;");
-    ui->m_textStatus->setStyleSheet("font-size: 18pt; color: #cccccc; background-color: #003333;");
-#endif
-    ui->graphicsView->setStyleSheet("font-size: 24pt; color:#ECF0F1; background-color: #212F3C; padding: 6px; spacing: 6px;");
-    ui->cameraComboBox->setStyleSheet("font-size: 18pt; font: bold; color: #ffffff; background-color: orange;");
-    ui->pushExit->setStyleSheet("font-size: 24pt; font: bold; color: #ffffff; background-color: #336699;");    
+    // Set window title and style
+    setWindowTitle("HeartRate Monitor Pro");
+    setStyleSheet("background-color: #1E1E2E;");
 
-    //QString currentTime = QDateTime::currentDateTime().toString("yyyyMMddhhmmss");
+// Medical-themed styles
+#if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
+    ui->textBpm->setStyleSheet("font-size: 36pt; font: bold; color: #3498db; background-color: #2D2D44; border-radius: 10px; padding: 10px;");
+    ui->m_textStatus->setStyleSheet("font-size: 16pt; color: #E0E0E0; background-color: #2D2D44; border-radius: 8px;");
+#else
+    ui->textBpm->setStyleSheet("font-size: 48pt; font: bold; color: #3498db; background-color: #2D2D44; border-radius: 15px; padding: 15px;");
+    ui->m_textStatus->setStyleSheet("font-size: 20pt; color: #E0E0E0; background-color: #2D2D44; border-radius: 10px;");
+#endif
+
+    ui->graphicsView->setStyleSheet("border: 2px solid #3D3D59; border-radius: 15px; background-color: #2D2D44;");
+    ui->graphicsView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    ui->graphicsView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    ui->cameraComboBox->setStyleSheet("font-size: 16pt; color: #FFFFFF; background-color: #4B4B6E; border-radius: 8px; padding: 5px;");
+    ui->pushExit->setStyleSheet("font-size: 18pt; font: bold; color: #FFFFFF; background-color: #FF4B4B; border-radius: 8px; padding: 8px;");
+
+    // Rest of your initialization code remains the same
     ui->graphicsView->setScene(new QGraphicsScene(this));
     QScreen *primaryScreen = QGuiApplication::primaryScreen();
     QRect screenGeometry = primaryScreen->availableGeometry();
     setGeometry(screenGeometry);
-
     ui->graphicsView->scene()->addItem(&pixmap);
 
-    QString fileName = ":/opencv/deploy.prototxt";
-    createFile(fileName);
-    fileName = ":/opencv/haarcascade_frontalface_alt.xml";
-    createFile(fileName);
-    fileName = ":/opencv/res10_300x300_ssd_iter_140000.caffemodel";
-    createFile(fileName);
+    // File initialization
+    QStringList files = {
+        ":/opencv/deploy.prototxt",
+        ":/opencv/haarcascade_frontalface_alt.xml",
+        ":/opencv/res10_300x300_ssd_iter_140000.caffemodel"
+    };
+    for (const QString &fileName : files) {
+        createFile(fileName);
+    }
 
+    // RPPG initialization
     rppg = new RPPG();
     connect(rppg, &RPPG::sendInfo, this, &MainWindow::printInfo);
     rppg->load(0, HAAR_CLASSIFIER_PATH, DNN_PROTO_PATH, DNN_MODEL_PATH);
 
+    // Frames initialization
     m_frames = new Frames();
     connect(m_frames, &Frames::sendInfo, this, &MainWindow::printInfo);
     connect(m_frames, &Frames::frameCaptured, this, &MainWindow::processFrame);
     connect(m_frames, &Frames::cameraListUpdated, this, &MainWindow::onCameraListUpdated);
     m_frames->initializeCameraDevices();
-    #if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
-        ui->cameraComboBox->setCurrentIndex(1);
-    #endif
 }
 
 MainWindow::~MainWindow()

@@ -5,7 +5,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 CONFIG += c++17
 
 TEMPLATE = app
-TARGET = heartbeat
+TARGET = HeartBeat
 
 QT += multimedia
 QT += multimediawidgets
@@ -55,8 +55,8 @@ macos {
     QMAKE_ASSET_CATALOGS = $$PWD/macos/Assets.xcassets
     QMAKE_ASSET_CATALOGS_APP_ICON = "AppIcon"
 
-    INCLUDEPATH += /opt/homebrew/Cellar/opencv/4.8.1_4/include/opencv4
-    LIBS += -L/opt/homebrew/Cellar/opencv/4.8.1_4/lib -lopencv_core -lopencv_dnn -lopencv_highgui -lopencv_imgcodecs -lopencv_imgproc -lopencv_objdetect -lopencv_video -lopencv_videoio
+    INCLUDEPATH += /usr/local/Cellar/opencv/4.10.0_12/include/opencv4
+    LIBS += -L/usr/local/Cellar/opencv/4.10.0_12/lib -lopencv_core -lopencv_dnn -lopencv_highgui -lopencv_imgcodecs -lopencv_imgproc -lopencv_objdetect -lopencv_video -lopencv_videoio
  }
 
 ios {
@@ -65,9 +65,9 @@ ios {
     QMAKE_ASSET_CATALOGS = $$PWD/ios/Assets.xcassets
     QMAKE_ASSET_CATALOGS_APP_ICON = "AppIcon"
 
-    INCLUDEPATH += $$(HOME)/opencv2.framework/include
-#    add opencv from xcode, Build Phases -> Link Binary With Libraries
-#    LIBS += -F$$(HOME)/opencv2.framework -framework opencv2
+    INCLUDEPATH += $$(HOME)/opencv2.framework
+#   add opencv from xcode, Build Phases -> Link Binary With Libraries
+    LIBS += -F$$(HOME)/opencv2.framework -framework opencv2
 }
 
 android {

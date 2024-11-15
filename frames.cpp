@@ -26,22 +26,23 @@ Frames::newFrame( const QVideoFrame & frame )
     }
 }
 
+
 void Frames::initializeCameraDevices()
 {
-    // Assuming you have a member variable to store the camera devices
     QStringList cameraDeviceList;
-
-    // Add the rest of the video input devices
     const QList<QCameraDevice> cameras = QMediaDevices::videoInputs();
+
     for (const QCameraDevice &cDevice : cameras)
     {
-        cameraDeviceList.append(cDevice.description());
+        if (cDevice.description().contains("Front", Qt::CaseInsensitive))
+        {
+            cameraDeviceList.append(cDevice.description());
+            break;
+        }
     }
 
-    // Emit the signal with the updated list
     emit cameraListUpdated(cameraDeviceList);
 }
-
 
 void Frames::setCamera(const QString &cameraDescription)
 {

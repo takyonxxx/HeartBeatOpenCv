@@ -3,7 +3,9 @@
 
 #include <stdio.h>
 #include <iostream>
-#include <opencv2/opencv.hpp>
+#ifdef __cplusplus
+#import <opencv2/opencv.hpp>
+#endif
 
 namespace cv {
 
