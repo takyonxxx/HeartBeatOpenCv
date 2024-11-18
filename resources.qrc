@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file>opencv/deploy.prototxt</file>
+        <file>opencv/haarcascade_frontalface_alt.xml</file>
+        <file>opencv/res10_300x300_ssd_iter_140000.caffemodel</file>
+    </qresource>
+</RCC>

@@ -1,0 +1,70 @@
+buildscript {
+   repositories {
+       google()
+       mavenCentral()
+   }
+   dependencies {
+       classpath 'com.android.tools.build:gradle:7.4.1'
+   }
+}
+
+repositories {
+   google()
+   mavenCentral()
+}
+
+apply plugin: 'com.android.application'
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
+    implementation 'androidx.core:core:1.10.1'
+}
+
+android {
+   namespace "org.tbiliyor.heartbeat"
+   compileSdkVersion androidCompileSdkVersion
+   buildToolsVersion androidBuildToolsVersion
+   ndkVersion androidNdkVersion
+
+   packagingOptions.jniLibs.useLegacyPackaging true
+
+   sourceSets {
+       main {
+           manifest.srcFile 'AndroidManifest.xml'
+           java.srcDirs = [qtAndroidDir + '/src', 'src', 'java']
+           aidl.srcDirs = [qtAndroidDir + '/src', 'src', 'aidl']
+           res.srcDirs = [qtAndroidDir + '/res', 'res']
+           resources.srcDirs = ['resources']
+           renderscript.srcDirs = ['src']
+           assets.srcDirs = ['assets']
+           jniLibs.srcDirs = ['libs']
+       }
+   }
+
+   tasks.withType(JavaCompile) {
+       options.incremental = true
+   }
+
+   compileOptions {
+       sourceCompatibility JavaVersion.VERSION_1_8
+       targetCompatibility JavaVersion.VERSION_1_8
+   }
+
+   lintOptions {
+       abortOnError false
+   }
+
+   aaptOptions {
+       noCompress 'rcc'
+   }
+
+   defaultConfig {
+       applicationId "org.tbiliyor.heartbeat"
+       resConfig "en"
+       minSdkVersion qtMinSdkVersion
+       targetSdkVersion 33
+       versionCode 1
+       versionName "1.0"
+       ndk.abiFilters = qtTargetAbiList.split(",")
+   }
+}
