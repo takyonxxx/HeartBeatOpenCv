@@ -56,7 +56,9 @@ void MainWindow::setupUI()
 
 void MainWindow::initializeRPPG()
 {
+    #if defined(Q_OS_ANDROID)
     connect(this, &MainWindow::cameraPermissionGranted, this, &MainWindow::onCameraPermissionGranted);
+    #endif
 
     rppg = new RPPG();
     connect(rppg, &RPPG::sendInfo, this, &MainWindow::printInfo);
@@ -230,6 +232,7 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+#if defined(Q_OS_ANDROID)
 extern "C" {
 JNIEXPORT void JNICALL
 Java_org_tbiliyor_heartbeat_MainActivity_notifyCameraPermissionGranted(JNIEnv *env, jobject obj)
@@ -239,3 +242,4 @@ Java_org_tbiliyor_heartbeat_MainActivity_notifyCameraPermissionGranted(JNIEnv *e
     }
 }
 }
+#endif

@@ -59,7 +59,9 @@ private slots:
     void onCameraListUpdated(const QStringList &);
     void on_pushExit_clicked();
     void on_cameraComboBox_currentIndexChanged(int index);
+#if defined(Q_OS_ANDROID)
     void onCameraPermissionGranted();
+#endif
 };
 
 #endif // MAINWINDOW_H
