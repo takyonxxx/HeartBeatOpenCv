@@ -39,6 +39,7 @@ private slots:
 
 private:
     Q_DISABLE_COPY( Frames )
+    QString getFormatString();
     QScopedPointer<QCamera> m_cam;
     QMediaCaptureSession m_capture;
 };
