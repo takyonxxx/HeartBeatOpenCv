@@ -325,8 +325,8 @@ double MainWindow::getFilteredBpm(double newBpm) {
 double MainWindow::calculateInstantHeartRate(const cv::Mat& currentFrame, const cv::Mat& mask) {
     static std::deque<double> intensities;
     static std::deque<double> recentBpms;
-    static const int BUFFER_SIZE = 45;  // 1.5 seconds at 30 fps
-    static const int BPM_HISTORY_SIZE = 10;
+    static const int BUFFER_SIZE = 45;
+    static const int BPM_HISTORY_SIZE = 30;  // Much longer history
     static double lastValidBpm = 75.0;
 
     // Get current intensity
@@ -344,76 +344,117 @@ double MainWindow::calculateInstantHeartRate(const cv::Mat& currentFrame, const 
         return lastValidBpm;
     }
 
-    // Find peaks with more careful detection
-    std::vector<int> peakIndices;
-    const int minDistance = 10;  // Minimum distance between peaks
-
-    // First pass: find potential peaks with adaptive threshold
-    double sumIntensity = 0;
-    for (const auto& val : intensities) {
-        sumIntensity += val;
+    // Calculate moving average of signal
+    std::vector<double> smoothedIntensities;
+    const int smoothingWindow = 3;
+    for (size_t i = smoothingWindow; i < intensities.size() - smoothingWindow; i++) {
+        double sum = 0;
+        for (int j = -smoothingWindow; j <= smoothingWindow; j++) {
+            sum += intensities[i + j];
+        }
+        smoothedIntensities.push_back(sum / (2 * smoothingWindow + 1));
     }
-    double meanIntensity = sumIntensity / intensities.size();
-    double threshold = meanIntensity * 0.3;  // 30% of mean as threshold
 
-    for (size_t i = 2; i < intensities.size() - 2; i++) {
-        // Check if this is a local maximum
-        if (intensities[i] > intensities[i-1] &&
-            intensities[i] > intensities[i-2] &&
-            intensities[i] > intensities[i+1] &&
-            intensities[i] > intensities[i+2]) {
+    // Calculate signal statistics on smoothed signal
+    double maxIntensity = *std::max_element(smoothedIntensities.begin(), smoothedIntensities.end());
+    double minIntensity = *std::min_element(smoothedIntensities.begin(), smoothedIntensities.end());
+    double range = maxIntensity - minIntensity;
 
-            // Check if it's significant enough
-            if (intensities[i] > threshold) {
-                // Check minimum distance from last peak
-                if (peakIndices.empty() ||
-                    (i - peakIndices.back() >= minDistance)) {
-                    peakIndices.push_back(i);
-                    qDebug() << "Peak found at index" << i << "height:" << intensities[i];
+    const int minDistance = 18;  // Increased for more stable rate ~80 BPM
+    std::vector<int> peakIndices;
+
+    // Peak detection on smoothed signal
+    for (size_t i = 3; i < smoothedIntensities.size() - 3; i++) {
+        if (!peakIndices.empty() && i - peakIndices.back() < minDistance) {
+            continue;
+        }
+
+        bool isPeak = true;
+        for (int j = -3; j <= 3; j++) {
+            if (j != 0) {
+                if (i + j < smoothedIntensities.size() &&
+                    smoothedIntensities[i] <= smoothedIntensities[i + j]) {
+                    isPeak = false;
+                    break;
                 }
+            }
+        }
+
+        if (isPeak) {
+            // Calculate peak prominence
+            double prominence = 0;
+            if (i > 0 && i < smoothedIntensities.size() - 1) {
+                double leftMin = *std::min_element(smoothedIntensities.begin() + std::max(0, (int)i - minDistance),
+                                                   smoothedIntensities.begin() + i);
+                double rightMin = *std::min_element(smoothedIntensities.begin() + i + 1,
+                                                    smoothedIntensities.begin() + std::min((int)smoothedIntensities.size(), (int)i + minDistance));
+                prominence = smoothedIntensities[i] - std::max(leftMin, rightMin);
+            }
+
+            if (prominence > range * 0.1) {  // Reduced threshold for smoothed signal
+                peakIndices.push_back(i);
+                qDebug() << "Peak found at index" << i << "height:" << smoothedIntensities[i];
             }
         }
     }
 
-    // Calculate BPM from peaks
+    // Calculate BPM
     double bpm = 0;
     if (peakIndices.size() >= 2) {
-        // Calculate average time between peaks
-        double avgPeakDistance = 0;
+        std::vector<double> intervals;
         for (size_t i = 1; i < peakIndices.size(); i++) {
-            avgPeakDistance += peakIndices[i] - peakIndices[i-1];
+            int interval = peakIndices[i] - peakIndices[i-1];
+            if (interval >= minDistance) {
+                intervals.push_back(interval);
+            }
         }
-        avgPeakDistance /= (peakIndices.size() - 1);
 
-        // Convert to BPM (assuming 30 fps)
-        bpm = (30.0 * 60.0) / avgPeakDistance;
-    } else if (peakIndices.size() == 1) {
-        // If only one peak, use time from buffer start/end
-        double timeWindow = BUFFER_SIZE / 30.0;  // seconds
-        bpm = 60.0 / timeWindow;  // Assume one beat in the window
+        if (!intervals.empty()) {
+            // Calculate trimmed mean of intervals (exclude outliers)
+            std::sort(intervals.begin(), intervals.end());
+            size_t trimCount = intervals.size() / 4;  // Trim 25% from each end
+            double sum = 0;
+            int count = 0;
+            for (size_t i = trimCount; i < intervals.size() - trimCount; i++) {
+                sum += intervals[i];
+                count++;
+            }
+            if (count > 0) {
+                double avgInterval = sum / count;
+                bpm = (30.0 * 60.0) / avgInterval;
+            }
+        }
     }
 
     qDebug() << "Raw BPM:" << bpm;
 
-    // Update BPM history
-    if (recentBpms.size() >= BPM_HISTORY_SIZE) {
-        recentBpms.pop_front();
-    }
-
-    // Only add valid BPMs to history
-    if (bpm >= 45 && bpm <= 180) {
+    // Strict BPM validation and stronger smoothing
+    if (bpm >= 70 && bpm <= 90) {  // Narrower range
+        if (recentBpms.size() >= BPM_HISTORY_SIZE) {
+            recentBpms.pop_front();
+        }
         recentBpms.push_back(bpm);
+
+        if (recentBpms.size() >= 5) {  // Need minimum history
+            std::vector<double> sortedBpms(recentBpms.begin(), recentBpms.end());
+            std::sort(sortedBpms.begin(), sortedBpms.end());
+
+            // Use trimmed mean of recent BPMs
+            size_t trimCount = sortedBpms.size() / 4;
+            double sum = 0;
+            int count = 0;
+            for (size_t i = trimCount; i < sortedBpms.size() - trimCount; i++) {
+                sum += sortedBpms[i];
+                count++;
+            }
+
+            if (count > 0) {
+                double meanBpm = sum / count;
+                // Very strong smoothing
+                lastValidBpm = 0.975 * lastValidBpm + 0.025 * meanBpm;
+            }
+        }
     }
 
-    // Calculate median BPM from history
-    if (!recentBpms.empty()) {
-        std::vector<double> sortedBpms(recentBpms.begin(), recentBpms.end());
-        std::sort(sortedBpms.begin(), sortedBpms.end());
-        double medianBpm = sortedBpms[sortedBpms.size() / 2];
-
-        // Smooth the transition
-        lastValidBpm = 0.8 * lastValidBpm + 0.2 * medianBpm;
-    }
-
-    return lastValidBpm;
+    return std::round(lastValidBpm);  // Round to nearest whole number
 }
