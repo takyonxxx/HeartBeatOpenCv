@@ -155,8 +155,6 @@ void MainWindow::createFile(const QString &fileName)
 
 void MainWindow::processFrame(QVideoFrame &frame)
 {
-    frontCamEnabled=false;
-
     if (frame.isValid()) {
         double heartRate = 0.0;
         QVideoFrame cloneFrame(frame);
@@ -198,6 +196,23 @@ void MainWindow::processFrame(QVideoFrame &frame)
                 Mat displayFrame;
                 cvtColor(maskedRed, displayFrame, COLOR_GRAY2BGR);
                 displayFrame.copyTo(frameRGB, mask);
+
+                // Add heart rate text
+                std::string bpmText = std::to_string(static_cast<int>(std::round(heartRate))) + " BPM";
+
+                // Get text size for centering
+                int fontFace = FONT_HERSHEY_DUPLEX;
+                double fontScale = 1.5;
+                int thickness = 2;
+                int baseline = 0;
+                Size textSize = getTextSize(bpmText, fontFace, fontScale, thickness, &baseline);
+
+                // Calculate text position (centered in circle)
+                Point textOrg(centerX - textSize.width/2, centerY + textSize.height/2);
+
+                // Draw text with background for better visibility
+                putText(frameRGB, bpmText, textOrg, fontFace, fontScale, Scalar(0, 0, 0), thickness + 1); // Black outline
+                putText(frameRGB, bpmText, textOrg, fontFace, fontScale, Scalar(255, 255, 255), thickness); // White text
             }
         }
         else

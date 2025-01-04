@@ -10,6 +10,9 @@ TARGET = HeartBeat
 QT += multimedia
 QT += multimediawidgets
 
+QMAKE_TARGET_BUNDLE_PREFIX = tbiliyor.com
+PRODUCT_BUNDLE_IDENTIFIER = $${QMAKE_TARGET_BUNDLE_PREFIX}.heartrate
+
 
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -59,15 +62,28 @@ macos {
     LIBS += -L/usr/local/Cellar/opencv/4.10.0_12/lib -lopencv_core -lopencv_dnn -lopencv_highgui -lopencv_imgcodecs -lopencv_imgproc -lopencv_objdetect -lopencv_video -lopencv_videoio
  }
 
+INCLUDEPATH += /Users/turkaybiliyor/Desktop/buildHeartBeat/opencv2.framework/Versions/A/Headers
+
 ios {
+
     message("ios enabled")
     QMAKE_INFO_PLIST = ./ios/Info.plist
     QMAKE_ASSET_CATALOGS = $$PWD/ios/Assets.xcassets
     QMAKE_ASSET_CATALOGS_APP_ICON = "AppIcon"
 
-    INCLUDEPATH += $$(HOME)/opencv2.framework
-#   add opencv from xcode, Build Phases -> Link Binary With Libraries
-    LIBS += -F$$(HOME)/opencv2.framework -framework opencv2
+    # OPENCV_DIR = /Users/turkaybiliyor/Desktop/buildHeartBeat
+
+    # INCLUDEPATH += $${OPENCV_DIR}/opencv2.framework/Headers
+    # LIBS += -F$${OPENCV_DIR} -framework opencv2
+    # QMAKE_LFLAGS += -F$${OPENCV_DIR}
+
+    # # Copy framework to app bundle
+    # opencv2.files = $${OPENCV_DIR}/opencv2.framework
+    # opencv2.path = Frameworks
+    # QMAKE_BUNDLE_DATA += opencv2
+
+    # # Post-processing command without concatenation
+    # QMAKE_POST_LINK = cp -f $$PWD/ios/opencv2_Info.plist $${OPENCV_DIR}/opencv2.framework/Info.plist
 }
 
 android {   
@@ -141,6 +157,7 @@ DISTFILES += \
     ios/Assets.xcassets/AppIcon.appiconset/87.png \
     ios/Assets.xcassets/AppIcon.appiconset/Contents.json \
     ios/Info.plist \
+    ios/opencv2_Info.plist \
     macos/Assets.xcassets/AppIcon.appiconset/1024.png \
     macos/Assets.xcassets/AppIcon.appiconset/114.png \
     macos/Assets.xcassets/AppIcon.appiconset/120.png \
