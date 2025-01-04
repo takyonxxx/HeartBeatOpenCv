@@ -34,10 +34,10 @@ void Frames::initializeCameraDevices()
 
     for (const QCameraDevice &cDevice : cameras)
     {
-        if (cDevice.description().contains("Front", Qt::CaseInsensitive))
+        if(cDevice.description().contains("Front", Qt::CaseInsensitive)
+            || cDevice.description().contains("Back Triple", Qt::CaseInsensitive))
         {
             cameraDeviceList.append(cDevice.description());
-            break;
         }
     }
 
@@ -128,6 +128,25 @@ QString Frames::getFormatString()
         .arg(maxRes.width())
         .arg(maxRes.height())
         .arg(device.description());
+}
+
+void Frames::setFlash(bool enable)
+{
+    if (!m_cam || !m_cam->isActive())
+    {
+        emit sendInfo("Camera not active or not set!");
+        return;
+    }
+
+    if (m_cam->isTorchModeSupported(QCamera::TorchOn))
+    {
+        m_cam->setTorchMode(enable ? QCamera::TorchOn : QCamera::TorchOff);
+        emit sendInfo(enable ? "Flash enabled" : "Flash disabled");
+    }
+    else
+    {
+        emit sendInfo("Torch mode not supported by this camera");
+    }
 }
 
 void Frames::stopCam()

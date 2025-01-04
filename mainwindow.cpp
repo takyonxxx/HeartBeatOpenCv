@@ -15,6 +15,9 @@ MainWindow::MainWindow(QWidget *parent)
     setupUI();
     initializeRPPG();
 
+    intensityBuffer.reserve(BUFFER_SIZE);
+    lastFrameTime = std::chrono::steady_clock::now();
+
 #if defined(Q_OS_ANDROID)
     requestAndroidPermissions();
 #else
@@ -56,9 +59,9 @@ void MainWindow::setupUI()
 
 void MainWindow::initializeRPPG()
 {
-    #if defined(Q_OS_ANDROID)
+#if defined(Q_OS_ANDROID)
     connect(this, &MainWindow::cameraPermissionGranted, this, &MainWindow::onCameraPermissionGranted);
-    #endif
+#endif
 
     rppg = new RPPG();
     connect(rppg, &RPPG::sendInfo, this, &MainWindow::printInfo);
@@ -155,36 +158,85 @@ void MainWindow::createFile(const QString &fileName)
 void MainWindow::processFrame(QVideoFrame &frame)
 {
     if (frame.isValid()) {
+
+        // Calculate frame interval
+        auto currentTime = std::chrono::steady_clock::now();
+        frameInterval = std::chrono::duration<double>(currentTime - lastFrameTime).count();
+        lastFrameTime = currentTime;
+        double heartRate = 0.0;
+
         QVideoFrame cloneFrame(frame);
         cloneFrame.map(QVideoFrame::ReadOnly);
         QImage img = cloneFrame.toImage();
         cloneFrame.unmap();
-
         img = img.convertToFormat(QImage::Format_RGB888);
+
         Mat frameRGB(img.height(),
                      img.width(),
                      CV_8UC3,
                      img.bits(),
                      img.bytesPerLine());
 
-        if(!frameRGB.empty()) {
-            Mat frameGray;
-            double bpm = 0.0;
+        if(!frontCamEnabled)
+        {
+            if(!frameRGB.empty()) {
+                // Convert to HSV color space for better color analysis
+                Mat frameHSV;
+                cvtColor(frameRGB, frameHSV, COLOR_BGR2HSV);
 
+                // Define red color range in HSV
+                Scalar lowerRed1(0, 70, 50);
+                Scalar upperRed1(10, 255, 255);
+                Scalar lowerRed2(170, 70, 50);
+                Scalar upperRed2(180, 255, 255);
+
+                // Create masks for red regions
+                Mat mask1, mask2, redMask;
+                inRange(frameHSV, lowerRed1, upperRed1, mask1);
+                inRange(frameHSV, lowerRed2, upperRed2, mask2);
+                bitwise_or(mask1, mask2, redMask);
+
+                // Apply morphological operations
+                Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
+                morphologyEx(redMask, redMask, MORPH_OPEN, kernel);
+                morphologyEx(redMask, redMask, MORPH_CLOSE, kernel);
+
+                // Calculate intensity
+                Scalar mean = cv::mean(frameRGB, redMask);
+                double redIntensity = mean[2] * 0.7 + mean[1] * 0.2 + mean[0] * 0.1;
+
+                // Store intensity for heart rate calculation
+                updateIntensityBuffer(redIntensity);
+
+                // Calculate measurements
+                //double glucoseLevel = calculateGlucoseLevel(redIntensity);
+                heartRate = calculateHeartRate();
+                std::stringstream ss;
+                ss << std::fixed << std::setprecision(0)
+                   << "Heart Rate: " << heartRate << " BPM";
+
+                printValue(ss.str().c_str());
+            }
+        }
+        else
+        {
+            Mat frameGray;
             cvtColor((InputArray)frameRGB, (OutputArray)frameGray, COLOR_BGR2GRAY);
             equalizeHist((InputArray)frameGray, (OutputArray)frameGray);
 
-            bpm = rppg->processFrame(frameRGB, frameGray);
-            if(bpm < MAX_BPM) {
+            heartRate = rppg->processFrame(frameRGB, frameGray);
                 std::stringstream ss;
-                ss << std::fixed << std::setprecision(1) << bpm;
-                printBpm(ss.str().c_str());
-            }
-
-            QImage img_face((uchar*)frameRGB.data, frameRGB.cols, frameRGB.rows, frameRGB.step, QImage::Format_RGB888);
-            pixmap.setPixmap(QPixmap::fromImage(img_face));
-            ui->graphicsView->fitInView(&pixmap, Qt::KeepAspectRatioByExpanding);
+                ss << std::fixed << std::setprecision(0)
+                   << "Heart Rate: " << heartRate << " BPM";
+                printValue(ss.str().c_str());
         }
+
+        // Display processed image
+        QImage img_processed((uchar*)frameRGB.data, frameRGB.cols, frameRGB.rows,
+                             frameRGB.step, QImage::Format_RGB888);
+        pixmap.setPixmap(QPixmap::fromImage(img_processed));
+        ui->graphicsView->fitInView(&pixmap, Qt::KeepAspectRatioByExpanding);
+
     }
 }
 
@@ -199,7 +251,7 @@ void MainWindow::printInfo(QString info)
     ui->m_textStatus->setText(info);
 }
 
-void MainWindow::printBpm(QString bpm)
+void MainWindow::printValue(QString bpm)
 {
     ui->textBpm->setText(bpm);
 }
@@ -217,8 +269,17 @@ void MainWindow::onCameraListUpdated(const QStringList &cameraDevices)
 
 void MainWindow::on_cameraComboBox_currentIndexChanged(int index)
 {
+    frontCamEnabled = false;
+
     QString selectedText = ui->cameraComboBox->itemText(index);
     m_frames->setCamera(selectedText);
+    if(selectedText.contains("Back"))
+        m_frames->setFlash(true);
+    else
+    {
+        m_frames->setFlash(false);
+        frontCamEnabled = true;
+    }
 }
 
 MainWindow::~MainWindow()

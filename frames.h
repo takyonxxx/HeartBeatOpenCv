@@ -32,6 +32,7 @@ public:
 
     void initializeCameraDevices();
     void setCamera(const QString &);
+    void setFlash(bool enable);
 
 private slots:
     void stopCam();
