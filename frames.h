@@ -34,6 +34,8 @@ public:
     void setCamera(const QString &);
     void setFlash(bool enable);
 
+    void setRunning(bool newRunning);
+
 private slots:
     void stopCam();
     void newFrame( const QVideoFrame&);
@@ -43,6 +45,7 @@ private:
     QString getFormatString();
     QScopedPointer<QCamera> m_cam;
     QMediaCaptureSession m_capture;
+    bool m_running;
 };
 
 #endif // FRAMES_H

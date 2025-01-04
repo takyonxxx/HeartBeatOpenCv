@@ -15,6 +15,8 @@ Frames::~Frames()
 void
 Frames::newFrame( const QVideoFrame & frame )
 {
+    if(!m_running)
+        return;
 
     QVideoFrame f = frame;
     f.map( QVideoFrame::ReadOnly );
@@ -102,6 +104,7 @@ void Frames::setCamera(const QString &cameraDescription)
     m_capture.setCamera(m_cam.get());
     m_capture.setVideoSink(this);
     m_cam->start();
+    setRunning(true);
 }
 
 QString Frames::getFormatString()
@@ -128,6 +131,11 @@ QString Frames::getFormatString()
         .arg(maxRes.width())
         .arg(maxRes.height())
         .arg(device.description());
+}
+
+void Frames::setRunning(bool newRunning)
+{
+    m_running = newRunning;
 }
 
 void Frames::setFlash(bool enable)
