@@ -153,6 +153,11 @@ void MainWindow::createFile(const QString &fileName)
     }
 }
 
+float MainWindow::getPulseValue(const Mat& maskedRed) {
+    Scalar mean = cv::mean(maskedRed);
+    return mean[0];  // Return average intensity of the masked region
+}
+
 void MainWindow::processFrame(QVideoFrame &frame)
 {
     if (frame.isValid()) {
@@ -188,8 +193,24 @@ void MainWindow::processFrame(QVideoFrame &frame)
                 Mat maskedRed;
                 redChannel.copyTo(maskedRed, mask);
 
-                // Calculate heart rate from the red channel
-                heartRate = calculateInstantHeartRate(maskedRed, mask);
+                // Calculate and filter heart rate
+                double rawHeartRate = calculateInstantHeartRate(maskedRed, mask);
+
+                // Apply Kalman filter
+                static BPMKalmanFilter kalmanFilter;
+                double kalmanFilteredRate = kalmanFilter.update(rawHeartRate);
+
+                // Apply additional filtering
+                heartRate = getFilteredBpm(kalmanFilteredRate);
+
+                // Store heart rate for visualization
+                static std::vector<float> pulseBuffer;
+                const int bufferSize = 100;
+
+                pulseBuffer.push_back(heartRate);
+                if (pulseBuffer.size() > bufferSize) {
+                    pulseBuffer.erase(pulseBuffer.begin());
+                }
 
                 // Change circle color on every pulse
                 static int colorIndex = 0;
@@ -202,30 +223,57 @@ void MainWindow::processFrame(QVideoFrame &frame)
                     Scalar(255, 255, 0)  // Cyan
                 };
                 Scalar currentColor = colors[colorIndex];
-                colorIndex = (colorIndex + 1) % colors.size(); // Cycle through colors
+                colorIndex = (colorIndex + 1) % colors.size();
 
-                // Visualize the circle with the current color
+                // Create display frame
                 Mat displayFrame;
                 cvtColor(maskedRed, displayFrame, COLOR_GRAY2BGR);
-                cv::circle(displayFrame, Point(centerX, centerY), roiSize, currentColor, 5); // Draw color outline
+
+                // Draw filtered pulse signal
+                if (pulseBuffer.size() > 1) {
+                    // Find min and max values for normalization
+                    auto minmax = std::minmax_element(pulseBuffer.begin(), pulseBuffer.end());
+                    float minVal = *minmax.first;
+                    float maxVal = *minmax.second;
+                    float range = maxVal - minVal;
+
+                    // Generate points for pulse wave
+                    std::vector<Point> points;
+                    for (size_t i = 0; i < pulseBuffer.size(); ++i) {
+                        float angle = (float)i / pulseBuffer.size() * 2 * CV_PI;
+                        float normalizedValue = (pulseBuffer[i] - minVal) / range;
+                        float radius = roiSize * (0.7 + normalizedValue * 0.2);
+
+                        int x = centerX + radius * cos(angle);
+                        int y = centerY + radius * sin(angle);
+                        points.push_back(Point(x, y));
+                    }
+
+                    // Draw pulse wave
+                    for (size_t i = 0; i < points.size() - 1; ++i) {
+                        line(displayFrame, points[i], points[i + 1], currentColor, 2);
+                    }
+                    line(displayFrame, points.back(), points.front(), currentColor, 2);
+                }
+
+                // Draw circle outline
+                cv::circle(displayFrame, Point(centerX, centerY), roiSize, currentColor, 5);
+
+                // Copy the result back to the main frame
                 displayFrame.copyTo(frameRGB, mask);
 
                 // Add heart rate text
                 std::string bpmText = std::to_string(static_cast<int>(std::round(heartRate))) + " BPM";
-
-                // Get text size for centering
                 int fontFace = FONT_HERSHEY_DUPLEX;
                 double fontScale = 1.5;
                 int thickness = 2;
                 int baseline = 0;
                 Size textSize = getTextSize(bpmText, fontFace, fontScale, thickness, &baseline);
-
-                // Calculate text position (centered in circle)
                 Point textOrg(centerX - textSize.width / 2, centerY + textSize.height / 2);
 
-                // Draw text with background for better visibility
-                putText(frameRGB, bpmText, textOrg, fontFace, fontScale, Scalar(0, 0, 0), thickness + 1); // Black outline
-                putText(frameRGB, bpmText, textOrg, fontFace, fontScale, Scalar(255, 255, 255), thickness); // White text
+                // Draw text with background
+                putText(frameRGB, bpmText, textOrg, fontFace, fontScale, Scalar(0, 0, 0), thickness + 1);
+                putText(frameRGB, bpmText, textOrg, fontFace, fontScale, Scalar(255, 255, 255), thickness);
             }
         }
         else

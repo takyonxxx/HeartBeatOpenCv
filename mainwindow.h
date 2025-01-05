@@ -27,6 +27,54 @@ using namespace cv;
 
 Q_DECLARE_METATYPE(cv::Mat);
 
+// Kalman Filter for BPM
+class BPMKalmanFilter {
+private:
+    cv::KalmanFilter kf;
+    bool initialized;
+
+public:
+    BPMKalmanFilter() : kf(2, 1, 0) {  // 2 state variables (value and velocity), 1 measurement
+        initialized = false;
+
+        // Initialize transition matrix (state update matrix)
+        kf.transitionMatrix = (Mat_<float>(2, 2) <<
+                                   1, 1,   // Position update: x(t) = x(t-1) + v(t-1)
+                               0, 1    // Velocity update: v(t) = v(t-1)
+                               );
+
+        // Measurement matrix (what we can measure)
+        kf.measurementMatrix = (Mat_<float>(1, 2) << 1, 0);  // We only measure position
+
+        // Process noise covariance matrix
+        setIdentity(kf.processNoiseCov, Scalar::all(0.0001));  // Small process noise for smooth predictions
+
+        // Measurement noise covariance matrix
+        setIdentity(kf.measurementNoiseCov, Scalar::all(0.1));  // Larger measurement noise as BPM readings can be noisy
+
+        // Initial state covariance matrix
+        setIdentity(kf.errorCovPost, Scalar::all(1));
+    }
+
+    float update(float measurement) {
+        if (!initialized) {
+            kf.statePost.at<float>(0) = measurement;
+            kf.statePost.at<float>(1) = 0;
+            initialized = true;
+            return measurement;
+        }
+
+        Mat prediction = kf.predict();
+
+        Mat_<float> measurement_matrix(1, 1);
+        measurement_matrix(0) = measurement;
+
+        Mat estimated = kf.correct(measurement_matrix);
+
+        return estimated.at<float>(0);
+    }
+};
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -43,6 +91,7 @@ private:
     void createFile(const QString &fileName);
     double calculateInstantHeartRate(const cv::Mat& currentFrame, const cv::Mat& mask);
     double getFilteredBpm(double newBpm);
+    float getPulseValue(const Mat& maskedRed);
 
 #if defined(Q_OS_ANDROID)
     void requestAndroidPermissions();
