@@ -171,8 +171,7 @@ void MainWindow::processFrame(QVideoFrame &frame)
 
         if(!frontCamEnabled)
         {
-            if(!frameRGB.empty()) {
-
+            if (!frameRGB.empty()) {
                 // Extract red channel
                 std::vector<Mat> channels;
                 split(frameRGB, channels);
@@ -192,9 +191,23 @@ void MainWindow::processFrame(QVideoFrame &frame)
                 // Calculate heart rate from the red channel
                 heartRate = calculateInstantHeartRate(maskedRed, mask);
 
-                // Visualize the masked red channel
+                // Change circle color on every pulse
+                static int colorIndex = 0;
+                static const std::vector<Scalar> colors = {
+                    Scalar(0, 0, 255),   // Red
+                    Scalar(0, 255, 0),   // Green
+                    Scalar(255, 0, 0),   // Blue
+                    Scalar(0, 255, 255), // Yellow
+                    Scalar(255, 0, 255), // Magenta
+                    Scalar(255, 255, 0)  // Cyan
+                };
+                Scalar currentColor = colors[colorIndex];
+                colorIndex = (colorIndex + 1) % colors.size(); // Cycle through colors
+
+                // Visualize the circle with the current color
                 Mat displayFrame;
                 cvtColor(maskedRed, displayFrame, COLOR_GRAY2BGR);
+                cv::circle(displayFrame, Point(centerX, centerY), roiSize, currentColor, 5); // Draw color outline
                 displayFrame.copyTo(frameRGB, mask);
 
                 // Add heart rate text
@@ -208,7 +221,7 @@ void MainWindow::processFrame(QVideoFrame &frame)
                 Size textSize = getTextSize(bpmText, fontFace, fontScale, thickness, &baseline);
 
                 // Calculate text position (centered in circle)
-                Point textOrg(centerX - textSize.width/2, centerY + textSize.height/2);
+                Point textOrg(centerX - textSize.width / 2, centerY + textSize.height / 2);
 
                 // Draw text with background for better visibility
                 putText(frameRGB, bpmText, textOrg, fontFace, fontScale, Scalar(0, 0, 0), thickness + 1); // Black outline
