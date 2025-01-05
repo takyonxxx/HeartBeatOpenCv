@@ -408,7 +408,6 @@ double MainWindow::calculateInstantHeartRate(const cv::Mat& currentFrame, const 
             double prominence = intensities[i] - std::max(leftMin, rightMin);
             if (prominence > range * 0.2) {  // Significant peak check
                 peakIndices.push_back(i);
-                qDebug() << "Peak found at index" << i << "height:" << intensities[i];
             }
         }
     }
