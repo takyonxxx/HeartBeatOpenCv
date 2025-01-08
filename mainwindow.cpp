@@ -177,33 +177,22 @@ void MainWindow::processFrame(QVideoFrame &frame)
         if(!frontCamEnabled)
         {
             if (!frameRGB.empty()) {
-                // Extract red channel
                 std::vector<Mat> channels;
                 split(frameRGB, channels);
-                Mat redChannel = channels[2];  // BGR format, so red is index 2
+                Mat redChannel = channels[2];
 
-                // Create mask for ROI (center region)
                 Mat mask = Mat::zeros(redChannel.size(), CV_8UC1);
                 int centerX = redChannel.cols / 2;
                 int centerY = redChannel.rows / 2;
                 int roiSize = std::min(redChannel.cols, redChannel.rows) / 3;
                 cv::circle(mask, Point(centerX, centerY), roiSize, Scalar(255), -1);
 
-                // Apply the mask to the red channel
                 Mat maskedRed;
                 redChannel.copyTo(maskedRed, mask);
 
-                // Calculate and filter heart rate
                 double rawHeartRate = calculateInstantHeartRate(maskedRed, mask);
+                heartRate = rawHeartRate; // Kalman filtresi kaldırıldı
 
-                // Apply Kalman filter
-                static BPMKalmanFilter kalmanFilter;
-                double kalmanFilteredRate = kalmanFilter.update(rawHeartRate);
-
-                // Apply additional filtering
-                heartRate = getFilteredBpm(kalmanFilteredRate);
-
-                // Store heart rate for visualization
                 static std::vector<float> pulseBuffer;
                 const int bufferSize = 100;
 
@@ -212,66 +201,119 @@ void MainWindow::processFrame(QVideoFrame &frame)
                     pulseBuffer.erase(pulseBuffer.begin());
                 }
 
-                // Change circle color on every pulse
-                static int colorIndex = 0;
-                static const std::vector<Scalar> colors = {
-                    Scalar(0, 0, 255),   // Red
-                    Scalar(0, 255, 0),   // Green
-                    Scalar(255, 0, 0),   // Blue
-                    Scalar(0, 255, 255), // Yellow
-                    Scalar(255, 0, 255), // Magenta
-                    Scalar(255, 255, 0)  // Cyan
-                };
-                Scalar currentColor = colors[colorIndex];
-                colorIndex = (colorIndex + 1) % colors.size();
-
-                // Create display frame
                 Mat displayFrame;
                 cvtColor(maskedRed, displayFrame, COLOR_GRAY2BGR);
 
-                // Draw filtered pulse signal
                 if (pulseBuffer.size() > 1) {
-                    // Find min and max values for normalization
                     auto minmax = std::minmax_element(pulseBuffer.begin(), pulseBuffer.end());
                     float minVal = *minmax.first;
                     float maxVal = *minmax.second;
                     float range = maxVal - minVal;
 
-                    // Generate points for pulse wave
+                    int lineY = centerY;
+                    int startX = centerX - roiSize;
+                    int endX = centerX + roiSize;
+
+                    // İnce grid çizgileri
+                    for(int y = lineY - roiSize/3; y <= lineY + roiSize/3; y += roiSize/10) {
+                        line(displayFrame, Point(startX, y), Point(endX, y), Scalar(50, 50, 50), 1);
+                    }
+                    for(int x = startX; x <= endX; x += roiSize/10) {
+                        line(displayFrame, Point(x, lineY - roiSize/3), Point(x, lineY + roiSize/3), Scalar(50, 50, 50), 1);
+                    }
+
+                    // Ana referans çizgisi
+                    line(displayFrame, Point(startX, lineY), Point(endX, lineY), Scalar(100, 100, 100), 2);
+
                     std::vector<Point> points;
+                    int segmentWidth = (endX - startX) / pulseBuffer.size();
+
+                    // Sinyal yumuşatma için cubic spline noktaları
+                    std::vector<Point> splinePoints;
+                    const int SMOOTHING_WINDOW = 5;
+
                     for (size_t i = 0; i < pulseBuffer.size(); ++i) {
-                        float angle = (float)i / pulseBuffer.size() * 2 * CV_PI;
-                        float normalizedValue = (pulseBuffer[i] - minVal) / range;
-                        float radius = roiSize * (0.7 + normalizedValue * 0.2);
+                        // Hareketli ortalama ile yumuşatma
+                        double smoothedValue = 0;
+                        int count = 0;
 
-                        int x = centerX + radius * cos(angle);
-                        int y = centerY + radius * sin(angle);
-                        points.push_back(Point(x, y));
+                        for (int j = -SMOOTHING_WINDOW; j <= SMOOTHING_WINDOW; j++) {
+                            if (i + j >= 0 && i + j < pulseBuffer.size()) {
+                                smoothedValue += pulseBuffer[i + j];
+                                count++;
+                            }
+                        }
+                        smoothedValue /= count;
+
+                        float normalizedValue = (smoothedValue - minVal) / range;
+                        int x = startX + i * segmentWidth;
+                        int y = lineY - normalizedValue * (roiSize/3);
+                        splinePoints.push_back(Point(x, y));
                     }
 
-                    // Draw pulse wave
+                    // Cubic spline interpolasyon için ara noktalar
+                    for (size_t i = 0; i < splinePoints.size() - 1; ++i) {
+                        Point p0 = (i > 0) ? splinePoints[i-1] : splinePoints[i];
+                        Point p1 = splinePoints[i];
+                        Point p2 = splinePoints[i+1];
+                        Point p3 = (i < splinePoints.size()-2) ? splinePoints[i+2] : p2;
+
+                        // Her iki nokta arasında 5 ara nokta oluştur
+                        for (int t = 0; t < 5; ++t) {
+                            float tt = t / 5.0f;
+
+                            // Catmull-Rom spline formülü
+                            float tt2 = tt * tt;
+                            float tt3 = tt2 * tt;
+
+                            float x = 0.5f * ((2.0f * p1.x) +
+                                              (-p0.x + p2.x) * tt +
+                                              (2.0f * p0.x - 5.0f * p1.x + 4.0f * p2.x - p3.x) * tt2 +
+                                              (-p0.x + 3.0f * p1.x - 3.0f * p2.x + p3.x) * tt3);
+
+                            float y = 0.5f * ((2.0f * p1.y) +
+                                              (-p0.y + p2.y) * tt +
+                                              (2.0f * p0.y - 5.0f * p1.y + 4.0f * p2.y - p3.y) * tt2 +
+                                              (-p0.y + 3.0f * p1.y - 3.0f * p2.y + p3.y) * tt3);
+
+                            points.push_back(Point(round(x), round(y)));
+                        }
+                        points.push_back(p2);
+
+                        // Peak noktalarında spike ekle
+                        if (i > 0 && i < splinePoints.size()-1) {
+                            if (splinePoints[i].y < splinePoints[i-1].y &&
+                                splinePoints[i].y < splinePoints[i+1].y) {
+                                int x = splinePoints[i].x;
+                                int y = splinePoints[i].y;
+                                points.push_back(Point(x, y - 12));
+                                points.push_back(Point(x + 2, y + 8));
+                                points.push_back(Point(x + 4, y));
+                            }
+                        }
+                    }
+
+                    // Sinyal çizimi
+                    Scalar signalColor(0, 255, 255); // Sabit sarı renk
                     for (size_t i = 0; i < points.size() - 1; ++i) {
-                        line(displayFrame, points[i], points[i + 1], currentColor, 2);
+                        line(displayFrame, points[i], points[i + 1], signalColor, 2);
                     }
-                    line(displayFrame, points.back(), points.front(), currentColor, 2);
                 }
 
-                // Draw circle outline
-                cv::circle(displayFrame, Point(centerX, centerY), roiSize, currentColor, 5);
+                // Daire çizimi
+                cv::circle(displayFrame, Point(centerX, centerY), roiSize, Scalar(0, 255, 255), 2);
 
-                // Copy the result back to the main frame
                 displayFrame.copyTo(frameRGB, mask);
 
-                // Add heart rate text
+                // BPM text
                 std::string bpmText = std::to_string(static_cast<int>(std::round(heartRate))) + " BPM";
                 int fontFace = FONT_HERSHEY_DUPLEX;
                 double fontScale = 1.5;
                 int thickness = 2;
                 int baseline = 0;
                 Size textSize = getTextSize(bpmText, fontFace, fontScale, thickness, &baseline);
-                Point textOrg(centerX - textSize.width / 2, centerY + textSize.height / 2);
+                Point textOrg(centerX - textSize.width / 2, centerY - roiSize/2);
 
-                // Draw text with background
                 putText(frameRGB, bpmText, textOrg, fontFace, fontScale, Scalar(0, 0, 0), thickness + 1);
                 putText(frameRGB, bpmText, textOrg, fontFace, fontScale, Scalar(255, 255, 255), thickness);
             }
@@ -293,8 +335,8 @@ void MainWindow::processFrame(QVideoFrame &frame)
 
         QImage img_processed((uchar*)frameRGB.data, frameRGB.cols, frameRGB.rows,
                              frameRGB.step, QImage::Format_RGB888);
-        pixmap.setPixmap(QPixmap::fromImage(img_processed));
-        ui->graphicsView->fitInView(&pixmap, Qt::KeepAspectRatioByExpanding);
+
+        processImage(img_processed);
     }
 }
 
@@ -365,157 +407,70 @@ Java_org_tbiliyor_heartbeat_MainActivity_notifyCameraPermissionGranted(JNIEnv *e
 #endif
 
 double MainWindow::getFilteredBpm(double newBpm) {
-    static std::deque<double> recentBpms;
-    static const int BPM_HISTORY_SIZE = 10;
-
-    // Update BPM history
-    if (recentBpms.size() >= BPM_HISTORY_SIZE) {
-        recentBpms.pop_front();
-    }
-    recentBpms.push_back(newBpm);
-
-    // Calculate median BPM with bounds checking
-    if (recentBpms.empty()) {
-        return newBpm;
-    }
-
-    std::vector<double> sortedBpms(recentBpms.begin(), recentBpms.end());
-    std::sort(sortedBpms.begin(), sortedBpms.end());
-    double medianBpm;
-    if (sortedBpms.size() % 2 == 0 && sortedBpms.size() > 1) {
-        size_t mid = sortedBpms.size() / 2;
-        medianBpm = (sortedBpms[mid-1] + sortedBpms[mid]) / 2.0;
-    } else if (!sortedBpms.empty()) {
-        medianBpm = sortedBpms[sortedBpms.size() / 2];
-    } else {
-        medianBpm = newBpm;
-    }
-
-    // Apply exponential smoothing
-    static double smoothedBpm = medianBpm;
-    smoothedBpm = 0.9 * smoothedBpm + 0.1 * medianBpm;
-
-    return smoothedBpm;
+    return bpmKalman.update(newBpm);
 }
 
 double MainWindow::calculateInstantHeartRate(const cv::Mat& currentFrame, const cv::Mat& mask) {
     static std::deque<double> intensities;
-    static std::deque<double> recentBpms;
-    static const int BUFFER_SIZE = 45;
-    static const int BPM_HISTORY_SIZE = 20;
-    static double lastValidBpm = 75.0;
-    static const double TARGET_BPM = 75.0;  // Target for stability
+    static const int BUFFER_SIZE = 100;
+    static double lastValidBpm = 0.0;
 
-    // Get current intensity
-    Scalar mean = cv::mean(currentFrame, mask);
+    cv::Scalar mean = cv::mean(currentFrame, mask);
     double intensity = mean[0];
 
-    // Update buffer
+    // Store intensity in buffer
     if (intensities.size() >= BUFFER_SIZE) {
         intensities.pop_front();
     }
+
     intensities.push_back(intensity);
 
     if (intensities.size() < BUFFER_SIZE) {
         return lastValidBpm;
     }
 
-    // Calculate signal statistics
+    // Calculate threshold
     double maxVal = *std::max_element(intensities.begin(), intensities.end());
     double minVal = *std::min_element(intensities.begin(), intensities.end());
-    double range = maxVal - minVal;
     double mean_val = std::accumulate(intensities.begin(), intensities.end(), 0.0) / intensities.size();
-    double threshold = mean_val + (range * 0.3);
+    double threshold = mean_val + 0.2 * (maxVal - minVal); // Reduced threshold factor for sensitivity
 
-    // Find peaks with consistent spacing
+    // Detect peaks
     std::vector<int> peakIndices;
-    const int minDistance = 20;  // Minimum 20 frames between peaks (~90 BPM max)
-    const int maxDistance = 30;  // Maximum 30 frames between peaks (~60 BPM min)
+    const int minDistance = 20;
+    const int maxDistance = 30;
 
-    // First pass: find all potential peaks
-    for (size_t i = 2; i < intensities.size() - 2; i++) {
+    for (size_t i = 1; i < intensities.size() - 1; i++) {
         if (!peakIndices.empty() && i - peakIndices.back() < minDistance) {
             continue;
         }
-
         if (intensities[i] > threshold &&
-            intensities[i] > intensities[i-1] &&
-            intensities[i] > intensities[i-2] &&
-            intensities[i] > intensities[i+1] &&
-            intensities[i] > intensities[i+2]) {
-
-            // Calculate prominence
-            double leftMin = intensities[i], rightMin = intensities[i];
-            for (int j = 1; j <= minDistance && i-j >= 0; j++) {
-                leftMin = std::min(leftMin, intensities[i-j]);
-            }
-            for (int j = 1; j <= minDistance && i+j < intensities.size(); j++) {
-                rightMin = std::min(rightMin, intensities[i+j]);
-            }
-
-            double prominence = intensities[i] - std::max(leftMin, rightMin);
-            if (prominence > range * 0.2) {  // Significant peak check
-                peakIndices.push_back(i);
-            }
+            intensities[i] > intensities[i - 1] &&
+            intensities[i] > intensities[i + 1]) {
+            peakIndices.push_back(i);
         }
     }
 
-    // Calculate BPM from peak intervals
-    double bpm = 0;
+    // Calculate BPM
+    double bpm = 0.0;
     if (peakIndices.size() >= 2) {
         std::vector<double> intervals;
         for (size_t i = 1; i < peakIndices.size(); i++) {
-            int interval = peakIndices[i] - peakIndices[i-1];
+            int interval = peakIndices[i] - peakIndices[i - 1];
+            qDebug() << interval;
             if (interval >= minDistance && interval <= maxDistance) {
                 intervals.push_back(interval);
             }
         }
-
         if (!intervals.empty()) {
-            // Use median interval
-            std::sort(intervals.begin(), intervals.end());
-            double medianInterval = intervals[intervals.size() / 2];
-            bpm = (30.0 * 60.0) / medianInterval;
+            double avgInterval = std::accumulate(intervals.begin(), intervals.end(), 0.0) / intervals.size();
+            bpm = (30.0 * 57.0) / avgInterval; // Convert frame interval to BPM
         }
     }
 
-    // If calculated BPM is invalid, use bias towards target
-    if (bpm < 60 || bpm > 90) {
-        bpm = 0.8 * lastValidBpm + 0.2 * TARGET_BPM;
+    if (bpm >= 70 && bpm <= 90) { // Adjusted valid range
+        lastValidBpm = getFilteredBpm(bpm);
     }
 
-    qDebug() << "Raw BPM:" << bpm;
-
-    // Update history and smooth
-    if (bpm >= 60 && bpm <= 90) {
-        if (recentBpms.size() >= BPM_HISTORY_SIZE) {
-            recentBpms.pop_front();
-        }
-        recentBpms.push_back(bpm);
-
-        if (recentBpms.size() >= 5) {
-            std::vector<double> sorted(recentBpms.begin(), recentBpms.end());
-            std::sort(sorted.begin(), sorted.end());
-
-            // Use middle 60% of values
-            int startIdx = sorted.size() * 0.2;
-            int endIdx = sorted.size() * 0.8;
-            double sum = 0;
-            int count = 0;
-
-            for (int i = startIdx; i < endIdx; i++) {
-                sum += sorted[i];
-                count++;
-            }
-
-            if (count > 0) {
-                double avgBpm = sum / count;
-                // Very smooth transition with bias towards target
-                double bias = 0.1 * (TARGET_BPM - avgBpm);
-                lastValidBpm = 0.95 * lastValidBpm + 0.05 * (avgBpm + bias);
-            }
-        }
-    }
-
-    return std::round(lastValidBpm);
+    return lastValidBpm;
 }
