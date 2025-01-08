@@ -194,7 +194,7 @@ void MainWindow::processFrame(QVideoFrame &frame)
                 heartRate = rawHeartRate; // Kalman filtresi kaldırıldı
 
                 static std::vector<float> pulseBuffer;
-                const int bufferSize = 100;
+                const int bufferSize = 200;
 
                 pulseBuffer.push_back(heartRate);
                 if (pulseBuffer.size() > bufferSize) {
@@ -433,7 +433,7 @@ double MainWindow::calculateInstantHeartRate(const cv::Mat& currentFrame, const 
     double maxVal = *std::max_element(intensities.begin(), intensities.end());
     double minVal = *std::min_element(intensities.begin(), intensities.end());
     double mean_val = std::accumulate(intensities.begin(), intensities.end(), 0.0) / intensities.size();
-    double threshold = mean_val + 0.2 * (maxVal - minVal); // Reduced threshold factor for sensitivity
+    double threshold = mean_val + 0.225 * (maxVal - minVal); // Reduced threshold factor for sensitivity
 
     // Detect peaks
     std::vector<int> peakIndices;
