@@ -190,9 +190,7 @@ void MainWindow::processFrame(QVideoFrame &frame)
                 Mat maskedRed;
                 redChannel.copyTo(maskedRed, mask);
 
-                double rawHeartRate = calculateInstantHeartRate(maskedRed, mask);
-                heartRate = rawHeartRate; // Kalman filtresi kaldırıldı
-
+                heartRate = calculateInstantHeartRate(maskedRed, mask);
                 static std::vector<float> pulseBuffer;
                 const int bufferSize = 200;
 
@@ -407,12 +405,21 @@ Java_org_tbiliyor_heartbeat_MainActivity_notifyCameraPermissionGranted(JNIEnv *e
 #endif
 
 double MainWindow::getFilteredBpm(double newBpm) {
-    return bpmKalman.update(newBpm);
+    double kalmanFilteredBpm = bpmKalman.update(newBpm);
+
+    // Second level of filtering using EMA
+    double alpha = 0.1; // Smoothing factor (0 < alpha <= 1)
+    double emaFilteredBpm = (alpha * kalmanFilteredBpm) + ((1 - alpha) * previousEma);
+
+    // Update the previous EMA value
+    previousEma = emaFilteredBpm;
+
+    return emaFilteredBpm;
 }
 
 double MainWindow::calculateInstantHeartRate(const cv::Mat& currentFrame, const cv::Mat& mask) {
     static std::deque<double> intensities;
-    static const int BUFFER_SIZE = 100;
+    static const int BUFFER_SIZE = 50;
     static double lastValidBpm = 0.0;
 
     cv::Scalar mean = cv::mean(currentFrame, mask);
@@ -433,12 +440,12 @@ double MainWindow::calculateInstantHeartRate(const cv::Mat& currentFrame, const 
     double maxVal = *std::max_element(intensities.begin(), intensities.end());
     double minVal = *std::min_element(intensities.begin(), intensities.end());
     double mean_val = std::accumulate(intensities.begin(), intensities.end(), 0.0) / intensities.size();
-    double threshold = mean_val + 0.225 * (maxVal - minVal); // Reduced threshold factor for sensitivity
+    double threshold = mean_val + 0.2 * (maxVal - minVal);
 
     // Detect peaks
     std::vector<int> peakIndices;
-    const int minDistance = 20;
-    const int maxDistance = 30;
+    const int minDistance = 19;
+    const int maxDistance = 31;
 
     for (size_t i = 1; i < intensities.size() - 1; i++) {
         if (!peakIndices.empty() && i - peakIndices.back() < minDistance) {
@@ -457,14 +464,13 @@ double MainWindow::calculateInstantHeartRate(const cv::Mat& currentFrame, const 
         std::vector<double> intervals;
         for (size_t i = 1; i < peakIndices.size(); i++) {
             int interval = peakIndices[i] - peakIndices[i - 1];
-            qDebug() << interval;
             if (interval >= minDistance && interval <= maxDistance) {
                 intervals.push_back(interval);
             }
         }
         if (!intervals.empty()) {
             double avgInterval = std::accumulate(intervals.begin(), intervals.end(), 0.0) / intervals.size();
-            bpm = (30.0 * 57.0) / avgInterval; // Convert frame interval to BPM
+            bpm = (30.0 * 55.0) / avgInterval; // Convert frame interval to BPM
         }
     }
 

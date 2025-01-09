@@ -108,6 +108,7 @@ private:
     cv::Mat prevFrameGray;
     double prevAvgIntensity = 0.0;
     BPMKalmanFilter bpmKalman;
+    double previousEma = 0.0;
 
 
 signals:
