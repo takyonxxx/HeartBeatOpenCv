@@ -372,7 +372,7 @@ void MainWindow::on_cameraComboBox_currentIndexChanged(int index)
 
     QString selectedText = ui->cameraComboBox->itemText(index);
     m_frames->setCamera(selectedText);
-    if(selectedText.contains("Back"))
+    if(selectedText.contains("Back") || selectedText.contains("Rear"))
         m_frames->setFlash(true);
     else
     {

@@ -37,7 +37,8 @@ void Frames::initializeCameraDevices()
     for (const QCameraDevice &cDevice : cameras)
     {
         if(cDevice.description().contains("Front", Qt::CaseInsensitive)
-            || cDevice.description().contains("Back Triple", Qt::CaseInsensitive))
+            || cDevice.description().contains("Back", Qt::CaseInsensitive)
+            || cDevice.description().contains("Rear", Qt::CaseInsensitive))
         {
             cameraDeviceList.append(cDevice.description());
         }

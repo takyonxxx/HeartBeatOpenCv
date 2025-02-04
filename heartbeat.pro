@@ -94,10 +94,10 @@ android {
     INCLUDEPATH += $$PWD/OpenCV-android-sdk/sdk/native/jni/include
     DEPENDPATH += $$PWD/OpenCV-android-sdk/sdk/native/jni/include
 
-    contains(ANDROID_TARGET_ARCH,armeabi-v7a) {
-        LIBS += -L$$PWD/OpenCV-android-sdk/sdk/native/libs/armeabi-v7a -lopencv_java4
+    contains(ANDROID_TARGET_ARCH,arm64-v8a) {
+        LIBS += -L$$PWD/OpenCV-android-sdk/sdk/native/libs/arm64-v8a -lopencv_java4
         LIBS += \
-            -L$$PWD/OpenCV-android-sdk/sdk/native/staticlibs/armeabi-v7a \
+            -L$$PWD/OpenCV-android-sdk/sdk/native/staticlibs/arm64-v8a \
             -lopencv_ml\
             -lopencv_objdetect\
             -lopencv_photo\
@@ -111,7 +111,7 @@ android {
             -lopencv_imgproc\
             -lopencv_core
 
-        ANDROID_EXTRA_LIBS = $$PWD/OpenCV-android-sdk/sdk/native/libs/armeabi-v7a/libopencv_java4.so
+        ANDROID_EXTRA_LIBS = $$PWD/OpenCV-android-sdk/sdk/native/libs/arm64-v8a/libopencv_java4.so
     }
 }
 
